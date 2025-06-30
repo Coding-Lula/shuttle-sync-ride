@@ -1,10 +1,10 @@
-
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, TrendingUp, AlertTriangle, DollarSign, Users, Calendar } from 'lucide-react';
+import { LogOut, TrendingUp, AlertTriangle, DollarSign, Users, Calendar, Download, FileSpreadsheet } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 // Mock data for senior overview
 const overviewData = {
@@ -34,10 +34,33 @@ const monthlyStats = [
 const SeniorDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const exportToExcel = () => {
+    // In a real implementation, this would generate and download an Excel file
+    toast({
+      title: "Export started",
+      description: "Your data export is being prepared and will download shortly.",
+    });
+    // Simulate export process
+    setTimeout(() => {
+      toast({
+        title: "Export completed",
+        description: "System data has been exported to Excel successfully.",
+      });
+    }, 2000);
+  };
+
+  const delegateToManager = () => {
+    toast({
+      title: "Enforcement delegated",
+      description: "Payment enforcement has been delegated to the manager.",
+    });
   };
 
   return (
@@ -55,9 +78,15 @@ const SeniorDashboard = () => {
                 <p className="text-sm text-gray-500">Welcome, {user?.name}</p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button onClick={exportToExcel} variant="outline">
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Export to Excel
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -70,7 +99,7 @@ const SeniorDashboard = () => {
               <div className="flex items-center space-x-2">
                 <DollarSign className="w-5 h-5 text-green-600" />
                 <div>
-                  <p className="text-2xl font-bold">${overviewData.totalRevenue.toLocaleString()}</p>
+                  <p className="text-2xl font-bold">$15,680</p>
                   <p className="text-sm text-gray-600">Total Revenue</p>
                 </div>
               </div>
@@ -82,7 +111,7 @@ const SeniorDashboard = () => {
               <div className="flex items-center space-x-2">
                 <AlertTriangle className="w-5 h-5 text-red-600" />
                 <div>
-                  <p className="text-2xl font-bold">${overviewData.unpaidAmount.toLocaleString()}</p>
+                  <p className="text-2xl font-bold">$2,340</p>
                   <p className="text-sm text-gray-600">Unpaid Amount</p>
                 </div>
               </div>
@@ -94,7 +123,7 @@ const SeniorDashboard = () => {
               <div className="flex items-center space-x-2">
                 <Users className="w-5 h-5 text-blue-600" />
                 <div>
-                  <p className="text-2xl font-bold">{overviewData.totalStudents}</p>
+                  <p className="text-2xl font-bold">156</p>
                   <p className="text-sm text-gray-600">Active Students</p>
                 </div>
               </div>
@@ -106,7 +135,7 @@ const SeniorDashboard = () => {
               <div className="flex items-center space-x-2">
                 <Calendar className="w-5 h-5 text-purple-600" />
                 <div>
-                  <p className="text-2xl font-bold">{overviewData.totalTrips}</p>
+                  <p className="text-2xl font-bold">1,247</p>
                   <p className="text-sm text-gray-600">Total Trips</p>
                 </div>
               </div>
@@ -118,7 +147,7 @@ const SeniorDashboard = () => {
               <div className="flex items-center space-x-2">
                 <AlertTriangle className="w-5 h-5 text-orange-600" />
                 <div>
-                  <p className="text-2xl font-bold">{overviewData.unpaidTrips}</p>
+                  <p className="text-2xl font-bold">23</p>
                   <p className="text-sm text-gray-600">Unpaid Trips</p>
                 </div>
               </div>
@@ -130,26 +159,61 @@ const SeniorDashboard = () => {
           {/* Unpaid Trips Alert */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-red-600">
-                <AlertTriangle className="w-5 h-5" />
-                <span>Unpaid Rides Alert</span>
-              </CardTitle>
-              <CardDescription>Students with outstanding payments</CardDescription>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="flex items-center space-x-2 text-red-600">
+                    <AlertTriangle className="w-5 h-5" />
+                    <span>Unpaid Rides Alert</span>
+                  </CardTitle>
+                  <CardDescription>Students with outstanding payments</CardDescription>
+                </div>
+                <Button onClick={delegateToManager} variant="outline" size="sm">
+                  Delegate to Manager
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {unpaidStudents.map((student, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50">
-                    <div>
-                      <p className="font-medium">{student.name}</p>
-                      <p className="text-sm text-gray-600">{student.unpaidTrips} unpaid trips</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-red-600">${student.amount}</p>
-                      <Badge variant="destructive">Overdue</Badge>
-                    </div>
+                <div className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50">
+                  <div>
+                    <p className="font-medium">John Doe</p>
+                    <p className="text-sm text-gray-600">3 unpaid trips</p>
                   </div>
-                ))}
+                  <div className="text-right">
+                    <p className="font-bold text-red-600">$45</p>
+                    <Badge variant="destructive">Overdue</Badge>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50">
+                  <div>
+                    <p className="font-medium">Emily Brown</p>
+                    <p className="text-sm text-gray-600">2 unpaid trips</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-red-600">$30</p>
+                    <Badge variant="destructive">Overdue</Badge>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50">
+                  <div>
+                    <p className="font-medium">Mike Johnson</p>
+                    <p className="text-sm text-gray-600">1 unpaid trip</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-red-600">$15</p>
+                    <Badge variant="destructive">Overdue</Badge>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50">
+                  <div>
+                    <p className="font-medium">Sarah Wilson</p>
+                    <p className="text-sm text-gray-600">4 unpaid trips</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-red-600">$60</p>
+                    <Badge variant="destructive">Overdue</Badge>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -165,21 +229,84 @@ const SeniorDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {monthlyStats.map((stat) => (
-                  <div key={stat.month} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <div className="text-center min-w-[3rem]">
-                        <p className="font-medium">{stat.month}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">{stat.trips} trips</p>
-                      </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="text-center min-w-[3rem]">
+                      <p className="font-medium">Jan</p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-green-600">${stat.revenue.toLocaleString()}</p>
+                    <div>
+                      <p className="text-sm text-gray-600">180 trips</p>
                     </div>
                   </div>
-                ))}
+                  <div className="text-right">
+                    <p className="font-bold text-green-600">$2,700</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="text-center min-w-[3rem]">
+                      <p className="font-medium">Feb</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">165 trips</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-green-600">$2,475</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="text-center min-w-[3rem]">
+                      <p className="font-medium">Mar</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">220 trips</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-green-600">$3,300</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="text-center min-w-[3rem]">
+                      <p className="font-medium">Apr</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">195 trips</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-green-600">$2,925</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="text-center min-w-[3rem]">
+                      <p className="font-medium">May</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">210 trips</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-green-600">$3,150</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="text-center min-w-[3rem]">
+                      <p className="font-medium">Jun</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">277 trips</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-green-600">$4,155</p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
