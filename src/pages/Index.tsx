@@ -1,12 +1,39 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      // Redirect based on user role
+      switch (user.role) {
+        case 'student':
+          navigate('/student');
+          break;
+        case 'driver':
+          navigate('/driver');
+          break;
+        case 'manager':
+          navigate('/manager');
+          break;
+        case 'senior':
+          navigate('/senior');
+          break;
+        default:
+          navigate('/login');
+      }
+    } else {
+      navigate('/login');
+    }
+  }, [user, navigate]);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+      <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
     </div>
   );
 };
