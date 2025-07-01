@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login, isLoading } = useAuth();
+  const { login, isLoading,user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -27,7 +27,24 @@ const LoginPage = () => {
         description: "Welcome to the shuttle booking system!",
       });
       // Navigate based on role - this will be handled by the auth context
-      navigate('/student');
+      switch (user?.role) {
+        case 'student':
+          navigate('/student');
+          break;
+        case 'driver':
+          navigate('/driver');
+          break;
+        case 'manager':
+          navigate('/manager');
+          break;
+        case 'senior':
+          navigate('/senior');
+          break;
+        default:
+          navigate('/unknown-role');
+          break;
+      }
+      
     } else {
       toast({
         title: "Login failed",
