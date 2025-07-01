@@ -6,29 +6,29 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { LogOut, Bus, MapPin, Users, Clock, CheckCircle } from 'lucide-react';
+import { LogOut, Bus, MapPin, Users, Clock, CheckCircle, ArrowRight } from 'lucide-react';
 
-// Mock data for today's trips
+// Mock data for today's trips with enhanced route information
 const todaysTrips = [
   {
     id: '1',
     time: '08:00',
     passengers: [
-      { id: '1', name: 'John Doe', pickup: 'Dormitory A', pickedUp: false },
-      { id: '2', name: 'Sarah Wilson', pickup: 'Dormitory B', pickedUp: false },
-      { id: '3', name: 'Mike Johnson', pickup: 'Main Campus', pickedUp: false }
+      { id: '1', name: 'John Doe', pickup: 'Dormitory A', destination: 'Main Campus', pickedUp: false },
+      { id: '2', name: 'Sarah Wilson', pickup: 'Dormitory B', destination: 'Library', pickedUp: false },
+      { id: '3', name: 'Mike Johnson', pickup: 'Main Campus', destination: 'Sports Center', pickedUp: false }
     ],
-    destination: 'Main Campus',
+    allStops: ['Dormitory A', 'Dormitory B', 'Main Campus', 'Library', 'Sports Center'],
     status: 'upcoming'
   },
   {
     id: '2',
     time: '17:30',
     passengers: [
-      { id: '4', name: 'Emily Brown', pickup: 'Library', pickedUp: true },
-      { id: '5', name: 'David Lee', pickup: 'Sports Center', pickedUp: true }
+      { id: '4', name: 'Emily Brown', pickup: 'Library', destination: 'Dormitory A', pickedUp: true },
+      { id: '5', name: 'David Lee', pickup: 'Sports Center', destination: 'Dormitory B', pickedUp: true }
     ],
-    destination: 'Dormitory A',
+    allStops: ['Library', 'Sports Center', 'Main Campus', 'Dormitory A', 'Dormitory B'],
     status: 'completed'
   }
 ];
@@ -143,14 +143,30 @@ const DriverDashboard = () => {
                         <div className="text-2xl font-bold text-blue-600">{trip.time}</div>
                         <div className="text-sm text-gray-500">Departure</div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <MapPin className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-600">to {trip.destination}</span>
-                      </div>
                     </div>
                     <Badge variant={trip.status === 'completed' ? 'default' : 'secondary'}>
                       {trip.status}
                     </Badge>
+                  </div>
+
+                  {/* Route Information */}
+                  <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                    <h4 className="font-medium text-blue-900 mb-2 flex items-center">
+                      <MapPin className="w-4 h-4 mr-1" />
+                      All Stops for this Trip
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {trip.allStops.map((stop, index) => (
+                        <div key={index} className="flex items-center">
+                          <Badge variant="outline" className="text-blue-600 border-blue-600">
+                            {stop}
+                          </Badge>
+                          {index < trip.allStops.length - 1 && (
+                            <ArrowRight className="w-3 h-3 text-gray-400 mx-1" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="space-y-3">
@@ -165,10 +181,12 @@ const DriverDashboard = () => {
                           />
                           <div>
                             <p className="font-medium">{passenger.name}</p>
-                            <p className="text-sm text-gray-600 flex items-center">
+                            <div className="flex items-center text-sm text-gray-600">
                               <MapPin className="w-3 h-3 mr-1" />
-                              {passenger.pickup}
-                            </p>
+                              <span>{passenger.pickup}</span>
+                              <ArrowRight className="w-3 h-3 mx-2" />
+                              <span>{passenger.destination}</span>
+                            </div>
                           </div>
                         </div>
                         {passenger.pickedUp && (

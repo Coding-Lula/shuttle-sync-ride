@@ -9,7 +9,202 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      billing: {
+        Row: {
+          created_at: string | null
+          id: string
+          month: string | null
+          status: string | null
+          total_distance_km: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          month?: string | null
+          status?: string | null
+          total_distance_km?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          month?: string | null
+          status?: string | null
+          total_distance_km?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bookings: {
+        Row: {
+          cancelled: boolean | null
+          created_at: string | null
+          id: string
+          stop_id: string | null
+          trip_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          cancelled?: boolean | null
+          created_at?: string | null
+          id?: string
+          stop_id?: string | null
+          trip_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          cancelled?: boolean | null
+          created_at?: string | null
+          id?: string
+          stop_id?: string | null
+          trip_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      check_ins: {
+        Row: {
+          booking_id: string | null
+          checked_in_at: string | null
+          id: string
+        }
+        Insert: {
+          booking_id?: string | null
+          checked_in_at?: string | null
+          id?: string
+        }
+        Update: {
+          booking_id?: string | null
+          checked_in_at?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "check_ins_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stops: {
+        Row: {
+          created_at: string | null
+          distance_km: number
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          distance_km: number
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          distance_km?: number
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      trips: {
+        Row: {
+          created_at: string | null
+          date: string
+          driver_id: string | null
+          id: string
+          route: string[] | null
+          time_slot: string
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          driver_id?: string | null
+          id?: string
+          route?: string[] | null
+          time_slot: string
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          driver_id?: string | null
+          id?: string
+          route?: string[] | null
+          time_slot?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trips_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          role: string
+          start_location: string | null
+          student_type: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          name: string
+          role: string
+          start_location?: string | null
+          student_type?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          role?: string
+          start_location?: string | null
+          student_type?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

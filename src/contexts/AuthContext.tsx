@@ -57,7 +57,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check for stored user on mount
     const storedUser = localStorage.getItem('shuttleUser');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+        localStorage.removeItem('shuttleUser');
+      }
     }
     setIsLoading(false);
   }, []);
@@ -65,19 +70,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const foundUser = mockUsers.find(u => u.email === email);
-    if (foundUser && password === 'password') {
-      setUser(foundUser);
-      localStorage.setItem('shuttleUser', JSON.stringify(foundUser));
+    try {
+      // Simulate API call with more realistic delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Find user with exact email match (case-insensitive)
+      const foundUser = mockUsers.find(u => 
+        u.email.toLowerCase() === email.toLowerCase().trim()
+      );
+      
+      // Check if user exists and password is correct
+      if (foundUser && password.trim() === 'password') {
+        setUser(foundUser);
+        localStorage.setItem('shuttleUser', JSON.stringify(foundUser));
+        setIsLoading(false);
+        return true;
+      }
+      
       setIsLoading(false);
-      return true;
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      setIsLoading(false);
+      return false;
     }
-    
-    setIsLoading(false);
-    return false;
   };
 
   const logout = () => {

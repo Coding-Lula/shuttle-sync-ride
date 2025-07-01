@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, User, Clock, BarChart3, Download } from 'lucide-react';
+import { BarChart3, Download } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useToast } from '@/hooks/use-toast';
 
 // Mock data for reports
 const tripReportsData = {
@@ -37,10 +38,73 @@ const TripReports = () => {
   const [selectedStudent, setSelectedStudent] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const { toast } = useToast();
 
   const exportToExcel = () => {
-    // In a real implementation, this would generate and download an Excel file
-    alert('Export functionality would be implemented here');
+    try {
+      // Create CSV data based on current report type
+      let csvContent = '';
+      let filename = '';
+      
+      switch (reportType) {
+        case 'student':
+          csvContent = 'Student Name,Total Trips,Paid Trips,Free Trips,Distance (km),Total Cost ($)\n';
+          const studentData = selectedStudent 
+            ? tripReportsData.perStudent.filter(s => s.studentName.toLowerCase().includes(selectedStudent.toLowerCase()))
+            : tripReportsData.perStudent;
+          
+          studentData.forEach(student => {
+            csvContent += `"${student.studentName}",${student.totalTrips},${student.paidTrips},${student.freeTrips},${student.totalDistance},${student.totalCost}\n`;
+          });
+          filename = 'student-trip-report.csv';
+          break;
+          
+        case 'timeSlot':
+          csvContent = 'Time Slot,Total Bookings,Avg Occupancy,Type,Revenue ($)\n';
+          tripReportsData.perTimeSlot.forEach(slot => {
+            csvContent += `${slot.timeSlot},${slot.totalBookings},"${slot.avgOccupancy}",${slot.type},${slot.revenue}\n`;
+          });
+          filename = 'timeslot-report.csv';
+          break;
+          
+        case 'dateRange':
+          csvContent = 'Date,Total Trips,Revenue ($),Avg Distance (km)\n';
+          tripReportsData.customDateRange.forEach(day => {
+            csvContent += `${day.date},${day.totalTrips},${day.revenue},${day.avgDistance}\n`;
+          });
+          filename = 'date-range-report.csv';
+          break;
+      }
+
+      // Create and trigger download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Export successful",
+        description: `Report exported as ${filename}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: "There was an error exporting the report",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getFilteredStudentData = () => {
+    if (!selectedStudent) return tripReportsData.perStudent;
+    return tripReportsData.perStudent.filter(student => 
+      student.studentName.toLowerCase().includes(selectedStudent.toLowerCase())
+    );
   };
 
   return (
@@ -100,90 +164,96 @@ const TripReports = () => {
 
             <Button onClick={exportToExcel} variant="outline">
               <Download className="w-4 h-4 mr-2" />
-              Export Excel
+              Export CSV
             </Button>
           </div>
 
           {/* Per Student Report */}
           {reportType === 'student' && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student Name</TableHead>
-                  <TableHead>Total Trips</TableHead>
-                  <TableHead>Paid Trips</TableHead>
-                  <TableHead>Free Trips</TableHead>
-                  <TableHead>Distance (km)</TableHead>
-                  <TableHead>Total Cost ($)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tripReportsData.perStudent.map((student, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{student.studentName}</TableCell>
-                    <TableCell>{student.totalTrips}</TableCell>
-                    <TableCell>{student.paidTrips}</TableCell>
-                    <TableCell>{student.freeTrips}</TableCell>
-                    <TableCell>{student.totalDistance}</TableCell>
-                    <TableCell>${student.totalCost}</TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student Name</TableHead>
+                    <TableHead>Total Trips</TableHead>
+                    <TableHead>Paid Trips</TableHead>
+                    <TableHead>Free Trips</TableHead>
+                    <TableHead>Distance (km)</TableHead>
+                    <TableHead>Total Cost ($)</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {getFilteredStudentData().map((student, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{student.studentName}</TableCell>
+                      <TableCell>{student.totalTrips}</TableCell>
+                      <TableCell>{student.paidTrips}</TableCell>
+                      <TableCell>{student.freeTrips}</TableCell>
+                      <TableCell>{student.totalDistance}</TableCell>
+                      <TableCell>${student.totalCost}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
 
           {/* Per Time Slot Report */}
           {reportType === 'timeSlot' && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Time Slot</TableHead>
-                  <TableHead>Total Bookings</TableHead>
-                  <TableHead>Avg Occupancy</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Revenue ($)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tripReportsData.perTimeSlot.map((slot, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{slot.timeSlot}</TableCell>
-                    <TableCell>{slot.totalBookings}</TableCell>
-                    <TableCell>{slot.avgOccupancy}</TableCell>
-                    <TableCell>
-                      <Badge variant={slot.type === 'free' ? 'secondary' : 'default'}>
-                        {slot.type === 'free' ? 'Free' : 'Paid'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>${slot.revenue}</TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Time Slot</TableHead>
+                    <TableHead>Total Bookings</TableHead>
+                    <TableHead>Avg Occupancy</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Revenue ($)</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {tripReportsData.perTimeSlot.map((slot, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{slot.timeSlot}</TableCell>
+                      <TableCell>{slot.totalBookings}</TableCell>
+                      <TableCell>{slot.avgOccupancy}</TableCell>
+                      <TableCell>
+                        <Badge variant={slot.type === 'free' ? 'secondary' : 'default'}>
+                          {slot.type === 'free' ? 'Free' : 'Paid'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>${slot.revenue}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
 
           {/* Date Range Report */}
           {reportType === 'dateRange' && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Total Trips</TableHead>
-                  <TableHead>Revenue ($)</TableHead>
-                  <TableHead>Avg Distance (km)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tripReportsData.customDateRange.map((day, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{day.date}</TableCell>
-                    <TableCell>{day.totalTrips}</TableCell>
-                    <TableCell>${day.revenue}</TableCell>
-                    <TableCell>{day.avgDistance}</TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Total Trips</TableHead>
+                    <TableHead>Revenue ($)</TableHead>
+                    <TableHead>Avg Distance (km)</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {tripReportsData.customDateRange.map((day, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{day.date}</TableCell>
+                      <TableCell>{day.totalTrips}</TableCell>
+                      <TableCell>${day.revenue}</TableCell>
+                      <TableCell>{day.avgDistance}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

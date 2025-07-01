@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, MapPin, Clock, DollarSign, Trash2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Trash2, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // Updated time slots based on requirements
@@ -31,6 +31,19 @@ const locations = [
   'Sports Center',
   'Medical Center'
 ];
+
+// Mock data for next time slot stops
+const nextTimeSlotStops = {
+  '07:30': ['Dormitory A', 'Dormitory B', 'Main Campus', 'Library'],
+  '08:45': ['Main Campus', 'Library', 'Sports Center', 'Medical Center'],
+  '09:45': ['Dormitory A', 'Main Campus', 'Sports Center'],
+  '10:45': ['Library', 'Medical Center', 'Dormitory B'],
+  '11:45': ['Main Campus', 'Dormitory A', 'Dormitory B'],
+  '12:45': ['Sports Center', 'Library', 'Main Campus'],
+  '14:45': ['Medical Center', 'Dormitory A', 'Sports Center'],
+  '15:45': ['Library', 'Main Campus', 'Dormitory B'],
+  '16:45': ['Dormitory A', 'Dormitory B', 'Main Campus']
+};
 
 // Mock distance data
 const getDistance = (pickup: string, destination: string) => {
@@ -61,6 +74,26 @@ const BookingPage = () => {
   const [pickup, setPickup] = useState<string>(user?.startLocation || '');
   const [destination, setDestination] = useState<string>('');
   const [bookings, setBookings] = useState<BookingItem[]>([]);
+  const [nextTimeSlot, setNextTimeSlot] = useState<string>('');
+
+  // Calculate next time slot based on current time
+  useEffect(() => {
+    const now = new Date();
+    const currentTime = now.getHours() * 100 + now.getMinutes();
+    
+    const timeSlotsInMinutes = timeSlots.map(slot => {
+      const [hours, minutes] = slot.time.split(':').map(Number);
+      return { ...slot, timeInMinutes: hours * 100 + minutes };
+    });
+
+    const nextSlot = timeSlotsInMinutes.find(slot => slot.timeInMinutes > currentTime);
+    if (nextSlot) {
+      setNextTimeSlot(nextSlot.time);
+    } else {
+      // If no slot today, show first slot of tomorrow
+      setNextTimeSlot(timeSlots[0].time);
+    }
+  }, []);
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
@@ -148,13 +181,38 @@ const BookingPage = () => {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Next Time Slot Information */}
+        {nextTimeSlot && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Info className="w-5 h-5 text-blue-600" />
+                <span>Next Available Shuttle</span>
+              </CardTitle>
+              <CardDescription>
+                The next shuttle departs at {nextTimeSlot} and will visit these stops:
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {nextTimeSlotStops[nextTimeSlot as keyof typeof nextTimeSlotStops]?.map((stop, index) => (
+                  <Badge key={index} variant="outline" className="text-blue-600 border-blue-600">
+                    <MapPin className="w-3 h-3 mr-1" />
+                    {stop}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Date & Time Selection */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Select Dates</CardTitle>
-                <CardDescription>Choose multiple dates up to 7 days in advance. Click dates to toggle selection.</CardDescription>
+                <CardDescription>Choose dates including today up to 7 days in advance. Click dates to toggle selection.</CardDescription>
               </CardHeader>
               <CardContent>
                 <Calendar
@@ -162,7 +220,7 @@ const BookingPage = () => {
                   selected={selectedDates}
                   onSelect={(dates) => dates && setSelectedDates(dates)}
                   disabled={(date) => 
-                    date < new Date() || 
+                    date < new Date(new Date().setHours(0, 0, 0, 0)) || 
                     date > new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
                   }
                   className="rounded-md border"

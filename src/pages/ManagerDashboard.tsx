@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -8,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogOut, Users, TrendingUp, Calendar, UserPlus, BarChart3, Download, Trash2 } from 'lucide-react';
+import { LogOut, Users, TrendingUp, Calendar, UserPlus, BarChart3, Trash2 } from 'lucide-react';
 import TripReports from '../components/TripReports';
+import ShuttleStopsManager from '../components/ShuttleStopsManager';
 import { useToast } from '@/hooks/use-toast';
 
 // Mock data for students with enhanced information
@@ -184,11 +184,12 @@ const ManagerDashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="students" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="students">Student Management</TabsTrigger>
             <TabsTrigger value="reports">Trip Reports</TabsTrigger>
             <TabsTrigger value="billing">Billing Overview</TabsTrigger>
             <TabsTrigger value="usage">Usage Statistics</TabsTrigger>
+            <TabsTrigger value="stops">Shuttle Stops</TabsTrigger>
           </TabsList>
 
           {/* Student Management */}
@@ -377,6 +378,11 @@ const ManagerDashboard = () => {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* Shuttle Stops Management */}
+          <TabsContent value="stops">
+            <ShuttleStopsManager />
           </TabsContent>
         </Tabs>
       </div>
