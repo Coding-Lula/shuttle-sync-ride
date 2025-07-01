@@ -4,11 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
+    "start": "vite dev",
+    "test": "vitest run",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "types": "tsc --noEmit",
+    "locale-snapshots": "env TZ=utc tsx ./scripts/build/localeSnapshots/index.ts",
+    "stats": "cloc . --exclude-dir=node_modules,tmp,.git,lib"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
