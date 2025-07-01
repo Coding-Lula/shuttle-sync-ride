@@ -1,11 +1,11 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, MapPin, Plus, LogOut, History, Bell, Trash2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, Plus, LogOut, History, Bell, Trash2, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // Mock data for upcoming bookings with distance
@@ -73,12 +73,57 @@ const tripHistory = [
   }
 ];
 
+// Mock data for next time slot stops
+const nextTimeSlotStops = {
+  '07:30': ['Dormitory A', 'Dormitory B', 'Main Campus', 'Library'],
+  '08:45': ['Main Campus', 'Library', 'Sports Center', 'Medical Center'],
+  '09:45': ['Dormitory A', 'Main Campus', 'Sports Center'],
+  '10:45': ['Library', 'Medical Center', 'Dormitory B'],
+  '11:45': ['Main Campus', 'Dormitory A', 'Dormitory B'],
+  '12:45': ['Sports Center', 'Library', 'Main Campus'],
+  '14:45': ['Medical Center', 'Dormitory A', 'Sports Center'],
+  '15:45': ['Library', 'Main Campus', 'Dormitory B'],
+  '16:45': ['Dormitory A', 'Dormitory B', 'Main Campus']
+};
+
+const timeSlots = [
+  { time: '07:30', type: 'free' },
+  { time: '08:45', type: 'free' },
+  { time: '09:45', type: 'paid' },
+  { time: '10:45', type: 'paid' },
+  { time: '11:45', type: 'free' },
+  { time: '12:45', type: 'free' },
+  { time: '14:45', type: 'paid' },
+  { time: '15:45', type: 'free' },
+  { time: '16:45', type: 'free' }
+];
+
 const StudentDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [upcomingBookings, setUpcomingBookings] = useState(initialBookings);
   const [showHistory, setShowHistory] = useState(false);
+  const [nextTimeSlot, setNextTimeSlot] = useState<string>('');
+
+  // Calculate next time slot based on current time
+  useEffect(() => {
+    const now = new Date();
+    const currentTime = now.getHours() * 100 + now.getMinutes();
+    
+    const timeSlotsInMinutes = timeSlots.map(slot => {
+      const [hours, minutes] = slot.time.split(':').map(Number);
+      return { ...slot, timeInMinutes: hours * 100 + minutes };
+    });
+
+    const nextSlot = timeSlotsInMinutes.find(slot => slot.timeInMinutes > currentTime);
+    if (nextSlot) {
+      setNextTimeSlot(nextSlot.time);
+    } else {
+      // If no slot today, show first slot of tomorrow
+      setNextTimeSlot(timeSlots[0].time);
+    }
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -257,12 +302,12 @@ const StudentDashboard = () => {
           </Card>
         </div>
 
-        {/* Upcoming Bookings */}
-        <Card>
+        {/* Your Upcoming Rides */}
+        <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Calendar className="w-5 h-5" />
-              <span>Upcoming Rides</span>
+              <span>Your Upcoming Rides</span>
             </CardTitle>
             <CardDescription>Your scheduled shuttle bookings</CardDescription>
           </CardHeader>
@@ -312,6 +357,31 @@ const StudentDashboard = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Next Available Shuttle Information */}
+        {nextTimeSlot && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Info className="w-5 h-5 text-blue-600" />
+                <span>Next Available Shuttle</span>
+              </CardTitle>
+              <CardDescription>
+                The next shuttle departs at {nextTimeSlot} and will visit these stops:
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {nextTimeSlotStops[nextTimeSlot as keyof typeof nextTimeSlotStops]?.map((stop, index) => (
+                  <Badge key={index} variant="outline" className="text-blue-600 border-blue-600">
+                    <MapPin className="w-3 h-3 mr-1" />
+                    {stop}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

@@ -65,6 +65,27 @@ interface BookingItem {
   destination: string;
 }
 
+// Helper function to check if a time slot has passed for today
+const isTimeSlotPassed = (timeSlot: string, selectedDate: Date) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dateOnly = new Date(selectedDate);
+  dateOnly.setHours(0, 0, 0, 0);
+  
+  // If it's not today, time slots are available
+  if (dateOnly.getTime() !== today.getTime()) {
+    return false;
+  }
+  
+  // If it's today, check if the time has passed
+  const now = new Date();
+  const [hours, minutes] = timeSlot.split(':').map(Number);
+  const slotTime = new Date();
+  slotTime.setHours(hours, minutes, 0, 0);
+  
+  return now > slotTime;
+};
+
 const BookingPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -116,6 +137,17 @@ const BookingPage = () => {
       toast({
         title: "Incomplete booking",
         description: "Please fill in all required fields and select at least one date",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if any selected date/time combination has passed
+    const hasPassedSlots = selectedDates.some(date => isTimeSlotPassed(selectedTime, date));
+    if (hasPassedSlots) {
+      toast({
+        title: "Invalid time selection",
+        description: "Cannot book a shuttle for a time that has already passed",
         variant: "destructive",
       });
       return;
@@ -181,31 +213,6 @@ const BookingPage = () => {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Next Time Slot Information */}
-        {nextTimeSlot && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Info className="w-5 h-5 text-blue-600" />
-                <span>Next Available Shuttle</span>
-              </CardTitle>
-              <CardDescription>
-                The next shuttle departs at {nextTimeSlot} and will visit these stops:
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {nextTimeSlotStops[nextTimeSlot as keyof typeof nextTimeSlotStops]?.map((stop, index) => (
-                  <Badge key={index} variant="outline" className="text-blue-600 border-blue-600">
-                    <MapPin className="w-3 h-3 mr-1" />
-                    {stop}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Date & Time Selection */}
           <div className="space-y-6">
@@ -249,17 +256,21 @@ const BookingPage = () => {
                 <div className="grid grid-cols-1 gap-3">
                   {timeSlots.map((slot) => {
                     const canBook = canUserBookFreeSlot(slot.type);
+                    const hasPastTime = selectedDates.some(date => isTimeSlotPassed(slot.time, date));
+                    const isDisabled = !slot.available || !canBook || hasPastTime;
+                    
                     return (
                       <Button
                         key={slot.time}
                         variant={selectedTime === slot.time ? "default" : "outline"}
-                        disabled={!slot.available || !canBook}
+                        disabled={isDisabled}
                         onClick={() => setSelectedTime(slot.time)}
                         className="flex items-center justify-between p-4 h-auto"
                       >
                         <div className="flex items-center space-x-2">
                           <Clock className="w-4 h-4" />
                           <span>{slot.time}</span>
+                          {hasPastTime && <span className="text-xs">(Past time)</span>}
                         </div>
                         <div className="flex items-center space-x-2">
                           <Badge variant={slot.type === 'free' ? 'secondary' : 'default'}>

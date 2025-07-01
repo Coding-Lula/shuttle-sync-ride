@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { BarChart3, Download } from 'lucide-react';
+import { BarChart3, Download, FileSpreadsheet } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 
@@ -33,6 +33,14 @@ const tripReportsData = {
   ]
 };
 
+// Calculate most common destination
+const getMostCommonDestination = () => {
+  const destinations = ['Main Campus', 'Library', 'Sports Center', 'Medical Center', 'Dormitory A', 'Dormitory B'];
+  const trips = [45, 38, 29, 25, 42, 31]; // Mock trip counts per destination
+  const maxIndex = trips.indexOf(Math.max(...trips));
+  return destinations[maxIndex];
+};
+
 const TripReports = () => {
   const [reportType, setReportType] = useState<'student' | 'timeSlot' | 'dateRange'>('student');
   const [selectedStudent, setSelectedStudent] = useState('');
@@ -40,7 +48,7 @@ const TripReports = () => {
   const [dateTo, setDateTo] = useState('');
   const { toast } = useToast();
 
-  const exportToExcel = () => {
+  const exportToCSV = () => {
     try {
       // Create CSV data based on current report type
       let csvContent = '';
@@ -95,6 +103,45 @@ const TripReports = () => {
       toast({
         title: "Export failed",
         description: "There was an error exporting the report",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const exportToExcel = () => {
+    try {
+      const mostCommonDestination = getMostCommonDestination();
+      
+      // Create comprehensive Excel data with summary information
+      let excelContent = 'Summary Report\n';
+      excelContent += `Most Common Destination,${mostCommonDestination}\n`;
+      excelContent += `Total Students,${tripReportsData.perStudent.length}\n`;
+      excelContent += `Total Revenue,$${tripReportsData.perStudent.reduce((sum, student) => sum + student.totalCost, 0)}\n\n`;
+      
+      excelContent += 'Student Name,Trips Taken,Total Cost ($)\n';
+      tripReportsData.perStudent.forEach(student => {
+        excelContent += `"${student.studentName}",${student.totalTrips},${student.totalCost}\n`;
+      });
+
+      // Create and trigger download
+      const blob = new Blob([excelContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'manager-trip-report.csv');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Excel export successful",
+        description: `Manager report exported with summary data including most common destination: ${mostCommonDestination}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Excel export failed",
+        description: "There was an error exporting the Excel report",
         variant: "destructive",
       });
     }
@@ -162,9 +209,14 @@ const TripReports = () => {
               </>
             )}
 
-            <Button onClick={exportToExcel} variant="outline">
+            <Button onClick={exportToCSV} variant="outline">
               <Download className="w-4 h-4 mr-2" />
               Export CSV
+            </Button>
+
+            <Button onClick={exportToExcel} variant="outline">
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Export Excel
             </Button>
           </div>
 
