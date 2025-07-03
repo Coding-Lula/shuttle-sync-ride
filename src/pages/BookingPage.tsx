@@ -159,12 +159,10 @@ useEffect(() => {
     navigate('/student');
   };
 
-  const canUserBookSlot = (slotType: string | undefined): boolean => {
-  if (!slotType) return false; // defensive
-  if (slotType === 'paid') return true;
-  if (slotType === 'free' && user?.studentType === 'community') return true;
-  return false;
-};
+  const canUserBookSlot = (): boolean => {
+    // All users can book any time slot as long as it's available and hasn't passed
+    return true;
+  };
 
 
   return (
@@ -224,7 +222,7 @@ useEffect(() => {
               <CardContent>
                 <div className="grid grid-cols-1 gap-3">
                   {timeSlots.map((slot) => {
-                    const canBook = canUserBookSlot(slot.type);
+                    const canBook = canUserBookSlot();
                     //const hasPastTime = selectedDates.some(date => isTimeSlotPassed(slot.time, date));
                     const hasPastTime = selectedDates.length > 0 && selectedDates.some(date => isTimeSlotPassed(slot.time, date));
 

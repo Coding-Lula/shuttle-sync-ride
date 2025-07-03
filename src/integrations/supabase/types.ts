@@ -47,24 +47,33 @@ export type Database = {
       bookings: {
         Row: {
           cancelled: boolean | null
+          cost: number | null
           created_at: string | null
+          distance_traveled: number | null
           id: string
+          payment_method: string | null
           stop_id: string | null
           trip_id: string | null
           user_id: string | null
         }
         Insert: {
           cancelled?: boolean | null
+          cost?: number | null
           created_at?: string | null
+          distance_traveled?: number | null
           id?: string
+          payment_method?: string | null
           stop_id?: string | null
           trip_id?: string | null
           user_id?: string | null
         }
         Update: {
           cancelled?: boolean | null
+          cost?: number | null
           created_at?: string | null
+          distance_traveled?: number | null
           id?: string
+          payment_method?: string | null
           stop_id?: string | null
           trip_id?: string | null
           user_id?: string | null
@@ -115,6 +124,83 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_transactions: {
+        Row: {
+          amount: number
+          booking_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          transaction_type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          booking_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          transaction_type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          booking_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          transaction_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_credit_transactions_booking"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_credit_transactions_user"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credits: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_credits_user"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
