@@ -8,6 +8,9 @@
     "test": "vitest run",
     "lint": "eslint .",
     "types": "tsc --noEmit",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "locale-snapshots": "env TZ=utc tsx ./scripts/build/localeSnapshots/index.ts",
     "stats": "cloc . --exclude-dir=node_modules,tmp,.git,lib"
   },

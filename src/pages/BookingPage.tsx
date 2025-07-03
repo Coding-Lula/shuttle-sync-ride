@@ -9,54 +9,23 @@ import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, MapPin, Clock, Trash2, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '../lib/supabaseClient';
 
 // Updated time slots based on requirements
 const timeSlots = [
-  { time: '07:30', type: 'free', available: true, label: 'Free for Community Students' },
-  { time: '08:45', type: 'free', available: true, label: 'Free for Community Students' },
-  { time: '09:45', type: 'paid', available: true, label: 'Paid' },
-  { time: '10:45', type: 'paid', available: false, label: 'Paid' },
-  { time: '11:45', type: 'free', available: true, label: 'Free for Community Students' },
-  { time: '12:45', type: 'free', available: true, label: 'Free for Community Students' },
-  { time: '14:45', type: 'paid', available: true, label: 'Paid' },
-  { time: '15:45', type: 'free', available: true, label: 'Free for Community Students' },
-  { time: '16:45', type: 'free', available: true, label: 'Free for Community Students' }
+  { time: '07:30',  available: true, type: 'free', label: 'Free for Community Students' },
+  { time: '08:45',  available: true, type: 'free', label: 'Free for Community Students' },
+  { time: '09:45',  available: true, type: 'paid', label: 'Paid' },
+  { time: '10:45',  available: true, type: 'paid', label: 'Paid' },
+  { time: '11:45',  available: true, type: 'free', label: 'Free for Community Students' },
+  { time: '12:45',  available: true, type: 'free', label: 'Free for Community Students' },
+  { time: '14:45',  available: true, type: 'paid', label: 'Paid' },
+  { time: '15:45',  available: true, type: 'free', label: 'Free for Community Students' },
+  { time: '16:45',  available: true, type: 'free', label: 'Free for Community Students' }
 ];
 
-const locations = [
-  'Dormitory A',
-  'Dormitory B',
-  'Main Campus',
-  'Library',
-  'Sports Center',
-  'Medical Center'
-];
 
-// Mock data for next time slot stops
-const nextTimeSlotStops = {
-  '07:30': ['Dormitory A', 'Dormitory B', 'Main Campus', 'Library'],
-  '08:45': ['Main Campus', 'Library', 'Sports Center', 'Medical Center'],
-  '09:45': ['Dormitory A', 'Main Campus', 'Sports Center'],
-  '10:45': ['Library', 'Medical Center', 'Dormitory B'],
-  '11:45': ['Main Campus', 'Dormitory A', 'Dormitory B'],
-  '12:45': ['Sports Center', 'Library', 'Main Campus'],
-  '14:45': ['Medical Center', 'Dormitory A', 'Sports Center'],
-  '15:45': ['Library', 'Main Campus', 'Dormitory B'],
-  '16:45': ['Dormitory A', 'Dormitory B', 'Main Campus']
-};
 
-// Mock distance data
-const getDistance = (pickup: string, destination: string) => {
-  const distances: Record<string, Record<string, number>> = {
-    'Dormitory A': { 'Main Campus': 2.3, 'Library': 1.8, 'Sports Center': 3.1, 'Medical Center': 2.7, 'Dormitory B': 0.8 },
-    'Dormitory B': { 'Main Campus': 2.1, 'Library': 1.6, 'Sports Center': 2.9, 'Medical Center': 2.5, 'Dormitory A': 0.8 },
-    'Main Campus': { 'Dormitory A': 2.3, 'Dormitory B': 2.1, 'Library': 0.5, 'Sports Center': 1.2, 'Medical Center': 0.8 },
-    'Library': { 'Dormitory A': 1.8, 'Dormitory B': 1.6, 'Main Campus': 0.5, 'Sports Center': 1.7, 'Medical Center': 1.3 },
-    'Sports Center': { 'Dormitory A': 3.1, 'Dormitory B': 2.9, 'Main Campus': 1.2, 'Library': 1.7, 'Medical Center': 2.0 },
-    'Medical Center': { 'Dormitory A': 2.7, 'Dormitory B': 2.5, 'Main Campus': 0.8, 'Library': 1.3, 'Sports Center': 2.0 }
-  };
-  return distances[pickup]?.[destination] || 0;
-};
 
 interface BookingItem {
   date: Date;
@@ -65,7 +34,6 @@ interface BookingItem {
   destination: string;
 }
 
-// Helper function to check if a time slot has passed for today
 const isTimeSlotPassed = (timeSlot: string, selectedDate: Date) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -98,23 +66,20 @@ const BookingPage = () => {
   const [nextTimeSlot, setNextTimeSlot] = useState<string>('');
 
   // Calculate next time slot based on current time
-  useEffect(() => {
-    const now = new Date();
-    const currentTime = now.getHours() * 100 + now.getMinutes();
-    
-    const timeSlotsInMinutes = timeSlots.map(slot => {
-      const [hours, minutes] = slot.time.split(':').map(Number);
-      return { ...slot, timeInMinutes: hours * 100 + minutes };
-    });
+const [stops, setStops] = useState<string[]>([]);
 
-    const nextSlot = timeSlotsInMinutes.find(slot => slot.timeInMinutes > currentTime);
-    if (nextSlot) {
-      setNextTimeSlot(nextSlot.time);
-    } else {
-      // If no slot today, show first slot of tomorrow
-      setNextTimeSlot(timeSlots[0].time);
+useEffect(() => {
+  const fetchStops = async () => {
+    const { data, error } = await supabase.from('stops').select('name');
+    if (error) {
+      console.error('Error fetching stops:', error.message);
+    } else if (data) {
+      setStops(data.map((stop) => stop.name));
     }
-  }, []);
+  };
+
+  fetchStops();
+}, []);
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
@@ -194,9 +159,13 @@ const BookingPage = () => {
     navigate('/student');
   };
 
-  const canUserBookFreeSlot = (slotType: string) => {
-    return slotType === 'paid' || user?.studentType === 'community';
-  };
+  const canUserBookSlot = (slotType: string | undefined): boolean => {
+  if (!slotType) return false; // defensive
+  if (slotType === 'paid') return true;
+  if (slotType === 'free' && user?.studentType === 'community') return true;
+  return false;
+};
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -255,8 +224,10 @@ const BookingPage = () => {
               <CardContent>
                 <div className="grid grid-cols-1 gap-3">
                   {timeSlots.map((slot) => {
-                    const canBook = canUserBookFreeSlot(slot.type);
-                    const hasPastTime = selectedDates.some(date => isTimeSlotPassed(slot.time, date));
+                    const canBook = canUserBookSlot(slot.type);
+                    //const hasPastTime = selectedDates.some(date => isTimeSlotPassed(slot.time, date));
+                    const hasPastTime = selectedDates.length > 0 && selectedDates.some(date => isTimeSlotPassed(slot.time, date));
+
                     const isDisabled = !slot.available || !canBook || hasPastTime;
                     
                     return (
@@ -276,9 +247,7 @@ const BookingPage = () => {
                           <Badge variant={slot.type === 'free' ? 'secondary' : 'default'}>
                             {slot.type === 'free' ? 'Free' : 'Paid'}
                           </Badge>
-                          {!canBook && (
-                            <Badge variant="destructive">YOYL Only</Badge>
-                          )}
+                          
                         </div>
                       </Button>
                     );
@@ -303,7 +272,7 @@ const BookingPage = () => {
                       <SelectValue placeholder="Select pickup location" />
                     </SelectTrigger>
                     <SelectContent>
-                      {locations.map((location) => (
+                      {stops.map((location) => (
                         <SelectItem key={location} value={location}>
                           <div className="flex items-center space-x-2">
                             <MapPin className="w-4 h-4" />
@@ -322,7 +291,7 @@ const BookingPage = () => {
                       <SelectValue placeholder="Select destination" />
                     </SelectTrigger>
                     <SelectContent>
-                      {locations.map((location) => (
+                      {stops.map((location) => (
                         <SelectItem key={location} value={location}>
                           <div className="flex items-center space-x-2">
                             <MapPin className="w-4 h-4" />
@@ -334,13 +303,7 @@ const BookingPage = () => {
                   </Select>
                 </div>
 
-                {pickup && destination && pickup !== destination && (
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <p className="text-sm font-medium text-blue-900">
-                      Distance: {getDistance(pickup, destination)} km
-                    </p>
-                  </div>
-                )}
+                
 
                 <Button onClick={addToBookings} className="w-full">
                   Add to Booking List
@@ -362,8 +325,7 @@ const BookingPage = () => {
                         <div className="flex-1">
                           <p className="font-medium">{booking.date.toLocaleDateString()} at {booking.time}</p>
                           <p className="text-sm text-gray-600">{booking.pickup} → {booking.destination}</p>
-                          <p className="text-sm text-blue-600">{getDistance(booking.pickup, booking.destination)} km</p>
-                        </div>
+                         </div>
                         <Button
                           variant="ghost"
                           size="sm"
