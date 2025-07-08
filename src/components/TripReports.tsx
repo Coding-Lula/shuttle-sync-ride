@@ -9,27 +9,27 @@ import { BarChart3, Download, FileSpreadsheet } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 
-// Mock data for reports
+// Mock data for reports (ZAR currency)
 const tripReportsData = {
   perStudent: [
-    { studentName: 'John Doe', totalTrips: 24, paidTrips: 8, freeTrips: 16, totalDistance: 54.2, totalCost: 40 },
-    { studentName: 'Sarah Wilson', totalTrips: 18, paidTrips: 6, freeTrips: 12, totalDistance: 41.4, totalCost: 30 },
-    { studentName: 'Mike Johnson', totalTrips: 31, paidTrips: 12, freeTrips: 19, totalDistance: 69.3, totalCost: 60 },
-    { studentName: 'Emily Brown', totalTrips: 12, paidTrips: 9, freeTrips: 3, totalDistance: 28.8, totalCost: 45 }
+    { studentName: 'John Doe', totalTrips: 24, paidTrips: 8, freeTrips: 16, totalDistance: 54.2, totalCost: 240 },
+    { studentName: 'Sarah Wilson', totalTrips: 18, paidTrips: 6, freeTrips: 12, totalDistance: 41.4, totalCost: 180 },
+    { studentName: 'Mike Johnson', totalTrips: 31, paidTrips: 12, freeTrips: 19, totalDistance: 69.3, totalCost: 360 },
+    { studentName: 'Emily Brown', totalTrips: 12, paidTrips: 9, freeTrips: 3, totalDistance: 28.8, totalCost: 270 }
   ],
   perTimeSlot: [
     { timeSlot: '07:30', totalBookings: 89, avgOccupancy: '94%', revenue: 0, type: 'free' },
     { timeSlot: '08:45', totalBookings: 76, avgOccupancy: '87%', revenue: 0, type: 'free' },
-    { timeSlot: '09:45', totalBookings: 45, avgOccupancy: '72%', revenue: 225, type: 'paid' },
-    { timeSlot: '14:45', totalBookings: 52, avgOccupancy: '81%', revenue: 260, type: 'paid' },
+    { timeSlot: '09:45', totalBookings: 45, avgOccupancy: '72%', revenue: 1350, type: 'paid' },
+    { timeSlot: '14:45', totalBookings: 52, avgOccupancy: '81%', revenue: 1560, type: 'paid' },
     { timeSlot: '16:45', totalBookings: 83, avgOccupancy: '91%', revenue: 0, type: 'free' }
   ],
   customDateRange: [
-    { date: '2024-06-24', totalTrips: 23, revenue: 85, avgDistance: 2.1 },
-    { date: '2024-06-25', totalTrips: 19, revenue: 70, avgDistance: 1.9 },
-    { date: '2024-06-26', totalTrips: 27, revenue: 95, avgDistance: 2.3 },
-    { date: '2024-06-27', totalTrips: 21, revenue: 75, avgDistance: 2.0 },
-    { date: '2024-06-28', totalTrips: 25, revenue: 90, avgDistance: 2.2 }
+    { date: '2024-06-24', totalTrips: 23, revenue: 510, avgDistance: 2.1 },
+    { date: '2024-06-25', totalTrips: 19, revenue: 420, avgDistance: 1.9 },
+    { date: '2024-06-26', totalTrips: 27, revenue: 570, avgDistance: 2.3 },
+    { date: '2024-06-27', totalTrips: 21, revenue: 450, avgDistance: 2.0 },
+    { date: '2024-06-28', totalTrips: 25, revenue: 540, avgDistance: 2.2 }
   ]
 };
 
@@ -116,7 +116,7 @@ const TripReports = () => {
       let excelContent = 'Summary Report\n';
       excelContent += `Most Common Destination,${mostCommonDestination}\n`;
       excelContent += `Total Students,${tripReportsData.perStudent.length}\n`;
-      excelContent += `Total Revenue,$${tripReportsData.perStudent.reduce((sum, student) => sum + student.totalCost, 0)}\n\n`;
+      excelContent += `Total Revenue,R${tripReportsData.perStudent.reduce((sum, student) => sum + student.totalCost, 0)}\n\n`;
       
       excelContent += 'Student Name,Trips Taken,Total Cost ($)\n';
       tripReportsData.perStudent.forEach(student => {
@@ -244,7 +244,7 @@ const TripReports = () => {
                       <TableCell>{student.paidTrips}</TableCell>
                       <TableCell>{student.freeTrips}</TableCell>
                       <TableCell>{student.totalDistance}</TableCell>
-                      <TableCell>${student.totalCost}</TableCell>
+                      <TableCell>R{student.totalCost}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -276,7 +276,7 @@ const TripReports = () => {
                           {slot.type === 'free' ? 'Free' : 'Paid'}
                         </Badge>
                       </TableCell>
-                      <TableCell>${slot.revenue}</TableCell>
+                      <TableCell>R{slot.revenue}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -301,7 +301,7 @@ const TripReports = () => {
                     <TableRow key={index}>
                       <TableCell className="font-medium">{day.date}</TableCell>
                       <TableCell>{day.totalTrips}</TableCell>
-                      <TableCell>${day.revenue}</TableCell>
+                      <TableCell>R{day.revenue}</TableCell>
                       <TableCell>{day.avgDistance}</TableCell>
                     </TableRow>
                   ))}

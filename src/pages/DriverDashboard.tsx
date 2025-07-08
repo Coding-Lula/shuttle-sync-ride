@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -7,36 +7,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LogOut, Bus, MapPin, Users, Clock, CheckCircle, ArrowRight } from 'lucide-react';
+import { useBookings, TripWithBookings } from '../hooks/useBookings';
 
-// Mock data for today's trips with enhanced route information
-const todaysTrips = [
-  {
-    id: '1',
-    time: '08:00',
-    passengers: [
-      { id: '1', name: 'John Doe', pickup: 'Dormitory A', destination: 'Main Campus', pickedUp: false },
-      { id: '2', name: 'Sarah Wilson', pickup: 'Dormitory B', destination: 'Library', pickedUp: false },
-      { id: '3', name: 'Mike Johnson', pickup: 'Main Campus', destination: 'Sports Center', pickedUp: false }
-    ],
-    allStops: ['Dormitory A', 'Dormitory B', 'Main Campus', 'Library', 'Sports Center'],
-    status: 'upcoming'
-  },
-  {
-    id: '2',
-    time: '17:30',
-    passengers: [
-      { id: '4', name: 'Emily Brown', pickup: 'Library', destination: 'Dormitory A', pickedUp: true },
-      { id: '5', name: 'David Lee', pickup: 'Sports Center', destination: 'Dormitory B', pickedUp: true }
-    ],
-    allStops: ['Library', 'Sports Center', 'Main Campus', 'Dormitory A', 'Dormitory B'],
-    status: 'completed'
-  }
-];
 
 const DriverDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [trips, setTrips] = useState(todaysTrips);
+  const { fetchTodaysTripsWithBookings } = useBookings();
+  const [trips, setTrips] = useState<TripWithBookings[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadTodaysTrips = async () => {
+      setIsLoading(true);
+      try {
+        const todaysTrips = await fetchTodaysTripsWithBookings();
+        setTrips(todaysTrips);
+      } catch (error) {
+        console.error('Error loading today\'s trips:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadTodaysTrips();
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -48,10 +43,10 @@ const DriverDashboard = () => {
       trip.id === tripId 
         ? {
             ...trip,
-            passengers: trip.passengers.map(passenger =>
-              passenger.id === passengerId
-                ? { ...passenger, pickedUp: !passenger.pickedUp }
-                : passenger
+            bookings: trip.bookings.map(booking =>
+              booking.id === passengerId
+                ? { ...booking, pickedUp: !booking.pickedUp }
+                : booking
             )
           }
         : trip
@@ -101,7 +96,7 @@ const DriverDashboard = () => {
                 <Users className="w-5 h-5 text-green-600" />
                 <div>
                   <p className="text-2xl font-bold">
-                    {trips.reduce((total, trip) => total + trip.passengers.length, 0)}
+                    {trips.reduce((total, trip) => total + trip.bookings.length, 0)}
                   </p>
                   <p className="text-sm text-gray-600">Total Passengers</p>
                 </div>
@@ -115,7 +110,11 @@ const DriverDashboard = () => {
                 <CheckCircle className="w-5 h-5 text-purple-600" />
                 <div>
                   <p className="text-2xl font-bold">
-                    {trips.filter(trip => trip.status === 'completed').length}
+                   {trips.filter(trip => {
+                     const now = new Date();
+                     const tripTime = new Date(`${trip.date} ${trip.time_slot}`);
+                     return tripTime < now;
+                   }).length}
                   </p>
                   <p className="text-sm text-gray-600">Completed Trips</p>
                 </div>
@@ -134,72 +133,96 @@ const DriverDashboard = () => {
             <CardDescription>Manage your trips and passenger pickups</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
-              {trips.map((trip) => (
-                <div key={trip.id} className="border rounded-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">{trip.time}</div>
-                        <div className="text-sm text-gray-500">Departure</div>
-                      </div>
-                    </div>
-                    <Badge variant={trip.status === 'completed' ? 'default' : 'secondary'}>
-                      {trip.status}
-                    </Badge>
-                  </div>
-
-                  {/* Route Information */}
-                  <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                    <h4 className="font-medium text-blue-900 mb-2 flex items-center">
-                      <MapPin className="w-4 h-4 mr-1" />
-                      All Stops for this Trip
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {trip.allStops.map((stop, index) => (
-                        <div key={index} className="flex items-center">
-                          <Badge variant="outline" className="text-blue-600 border-blue-600">
-                            {stop}
-                          </Badge>
-                          {index < trip.allStops.length - 1 && (
-                            <ArrowRight className="w-3 h-3 text-gray-400 mx-1" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h4 className="font-medium text-gray-900">Passengers ({trip.passengers.length})</h4>
-                    {trip.passengers.map((passenger) => (
-                      <div key={passenger.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <Checkbox
-                            checked={passenger.pickedUp}
-                            onCheckedChange={() => togglePassengerPickup(trip.id, passenger.id)}
-                            disabled={trip.status === 'completed'}
-                          />
-                          <div>
-                            <p className="font-medium">{passenger.name}</p>
-                            <div className="flex items-center text-sm text-gray-600">
-                              <MapPin className="w-3 h-3 mr-1" />
-                              <span>{passenger.pickup}</span>
-                              <ArrowRight className="w-3 h-3 mx-2" />
-                              <span>{passenger.destination}</span>
-                            </div>
+            {isLoading ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">Loading today's trips...</p>
+              </div>
+            ) : trips.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No trips scheduled for today.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {trips.map((trip) => {
+                  const now = new Date();
+                  const tripTime = new Date(`${trip.date} ${trip.time_slot}`);
+                  const status = tripTime < now ? 'completed' : 'upcoming';
+                  
+                  return (
+                    <div key={trip.id} className="border rounded-lg p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-4">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-blue-600">{trip.time_slot}</div>
+                            <div className="text-sm text-gray-500">Departure</div>
                           </div>
                         </div>
-                        {passenger.pickedUp && (
-                          <Badge variant="outline" className="text-green-600 border-green-600">
-                            Picked Up
-                          </Badge>
+                        <Badge variant={status === 'completed' ? 'default' : 'secondary'}>
+                          {status}
+                        </Badge>
+                      </div>
+
+                      {/* Route Information */}
+                      <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                        <h4 className="font-medium text-blue-900 mb-2 flex items-center">
+                          <MapPin className="w-4 h-4 mr-1" />
+                          Route for this Trip
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {trip.route && trip.route.length > 0 ? (
+                            trip.route.map((stop, index) => (
+                              <div key={index} className="flex items-center">
+                                <Badge variant="outline" className="text-blue-600 border-blue-600">
+                                  {stop}
+                                </Badge>
+                                {index < trip.route.length - 1 && (
+                                  <ArrowRight className="w-3 h-3 text-gray-400 mx-1" />
+                                )}
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-sm text-gray-500">No route defined for this trip</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-gray-900">Passengers ({trip.bookings.length})</h4>
+                        {trip.bookings.length === 0 ? (
+                          <p className="text-sm text-gray-500">No passengers booked for this trip.</p>
+                        ) : (
+                          trip.bookings.map((booking) => (
+                            <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                              <div className="flex items-center space-x-3">
+                                <Checkbox
+                                  checked={booking.pickedUp}
+                                  onCheckedChange={() => togglePassengerPickup(trip.id, booking.id)}
+                                  disabled={status === 'completed'}
+                                />
+                                <div>
+                                  <p className="font-medium">{booking.user.name}</p>
+                                  <div className="flex items-center text-sm text-gray-600">
+                                    <MapPin className="w-3 h-3 mr-1" />
+                                    <span>{booking.pickup}</span>
+                                    <ArrowRight className="w-3 h-3 mx-2" />
+                                    <span>{booking.destination}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              {booking.pickedUp && (
+                                <Badge variant="outline" className="text-green-600 border-green-600">
+                                  Picked Up
+                                </Badge>
+                              )}
+                            </div>
+                          ))
                         )}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

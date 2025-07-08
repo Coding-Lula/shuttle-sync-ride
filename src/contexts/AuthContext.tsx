@@ -24,6 +24,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (profile) {
+            setUser(profile);
+            localStorage.setItem('shuttleUser', JSON.stringify(profile));
+          }
+        } else {
+          setUser(null);
+          localStorage.removeItem('shuttleUser');
+        }
+        setIsLoading(false);
+      }
+    );
+
+    // Initial session check
     const loadUser = async () => {
       const {
         data: { session },
@@ -46,6 +68,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     loadUser();
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {

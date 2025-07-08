@@ -25,7 +25,7 @@ export function useStudents() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setStudents(data || []);
+      setStudents((data || []) as Student[]);
     } catch (error) {
       console.error('Error fetching students:', error);
       toast({

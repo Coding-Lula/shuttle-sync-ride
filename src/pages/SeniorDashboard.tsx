@@ -14,26 +14,26 @@ import { useToast } from '@/hooks/use-toast';
 const overallStats = {
   totalStudents: 156,
   totalTrips: 1247,
-  totalRevenue: 1580,
+  totalRevenue: 9480,
   monthlyGrowth: 12.5,
   activeRoutes: 8,
   avgOccupancy: 87
 };
 
 const monthlyData = [
-  { month: 'January', trips: 98, revenue: 120, students: 45 },
-  { month: 'February', trips: 112, revenue: 135, students: 48 },
-  { month: 'March', trips: 124, revenue: 148, students: 52 },
-  { month: 'April', trips: 118, revenue: 142, students: 49 },
-  { month: 'May', trips: 132, revenue: 165, students: 55 },
-  { month: 'June', trips: 145, revenue: 178, students: 58 }
+  { month: 'January', trips: 98, revenue: 720, students: 45 },
+  { month: 'February', trips: 112, revenue: 810, students: 48 },
+  { month: 'March', trips: 124, revenue: 888, students: 52 },
+  { month: 'April', trips: 118, revenue: 852, students: 49 },
+  { month: 'May', trips: 132, revenue: 990, students: 55 },
+  { month: 'June', trips: 145, revenue: 1068, students: 58 }
 ];
 
 const routePerformance = [
   { route: 'Dormitory A → Main Campus', trips: 245, revenue: 0, occupancy: '94%', type: 'Free' },
   { route: 'Main Campus → Library', trips: 198, revenue: 0, occupancy: '89%', type: 'Free' },
-  { route: 'Sports Center → Dormitory B', trips: 156, revenue: 780, occupancy: '78%', type: 'Paid' },
-  { route: 'Medical Center → Main Campus', trips: 134, revenue: 670, occupancy: '71%', type: 'Paid' },
+  { route: 'Sports Center → Dormitory B', trips: 156, revenue: 4680, occupancy: '78%', type: 'Paid' },
+  { route: 'Medical Center → Main Campus', trips: 134, revenue: 4020, occupancy: '71%', type: 'Paid' },
   { route: 'Library → Dormitory A', trips: 112, revenue: 0, occupancy: '83%', type: 'Free' }
 ];
 
@@ -54,7 +54,7 @@ const SeniorDashboard = () => {
 
       switch (dataType) {
         case 'monthly':
-          csvContent = 'Month,Trips,Revenue ($),Active Students\n';
+          csvContent = 'Month,Trips,Revenue (ZAR),Active Students\n';
           monthlyData.forEach(item => {
             csvContent += `${item.month},${item.trips},${item.revenue},${item.students}\n`;
           });
@@ -62,7 +62,7 @@ const SeniorDashboard = () => {
           break;
 
         case 'routes':
-          csvContent = 'Route,Total Trips,Revenue ($),Occupancy,Type\n';
+          csvContent = 'Route,Total Trips,Revenue (ZAR),Occupancy,Type\n';
           routePerformance.forEach(route => {
             csvContent += `"${route.route}",${route.trips},${route.revenue},"${route.occupancy}",${route.type}\n`;
           });
@@ -73,7 +73,7 @@ const SeniorDashboard = () => {
           csvContent = 'Metric,Value\n';
           csvContent += `Total Students,${overallStats.totalStudents}\n`;
           csvContent += `Total Trips,${overallStats.totalTrips}\n`;
-          csvContent += `Total Revenue,$${overallStats.totalRevenue}\n`;
+          csvContent += `Total Revenue,R${overallStats.totalRevenue}\n`;
           csvContent += `Monthly Growth,${overallStats.monthlyGrowth}%\n`;
           csvContent += `Active Routes,${overallStats.activeRoutes}\n`;
           csvContent += `Average Occupancy,${overallStats.avgOccupancy}%\n`;
@@ -162,7 +162,7 @@ const SeniorDashboard = () => {
               <div className="flex items-center space-x-2">
                 <DollarSign className="w-5 h-5 text-purple-600" />
                 <div>
-                  <p className="text-2xl font-bold">${overallStats.totalRevenue}</p>
+                  <p className="text-2xl font-bold">R{overallStats.totalRevenue}</p>
                   <p className="text-sm text-gray-600">Total Revenue</p>
                 </div>
               </div>
@@ -236,7 +236,7 @@ const SeniorDashboard = () => {
                       <TableRow>
                         <TableHead>Month</TableHead>
                         <TableHead>Total Trips</TableHead>
-                        <TableHead>Revenue ($)</TableHead>
+                        <TableHead>Revenue (ZAR)</TableHead>
                         <TableHead>Active Students</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -245,7 +245,7 @@ const SeniorDashboard = () => {
                         <TableRow key={index}>
                           <TableCell className="font-medium">{item.month}</TableCell>
                           <TableCell>{item.trips}</TableCell>
-                          <TableCell>${item.revenue}</TableCell>
+                          <TableCell>R{item.revenue}</TableCell>
                           <TableCell>{item.students}</TableCell>
                         </TableRow>
                       ))}
@@ -278,7 +278,7 @@ const SeniorDashboard = () => {
                       <TableRow>
                         <TableHead>Route</TableHead>
                         <TableHead>Total Trips</TableHead>
-                        <TableHead>Revenue ($)</TableHead>
+                        <TableHead>Revenue (ZAR)</TableHead>
                         <TableHead>Occupancy</TableHead>
                         <TableHead>Type</TableHead>
                       </TableRow>
@@ -288,7 +288,7 @@ const SeniorDashboard = () => {
                         <TableRow key={index}>
                           <TableCell className="font-medium">{route.route}</TableCell>
                           <TableCell>{route.trips}</TableCell>
-                          <TableCell>${route.revenue}</TableCell>
+                          <TableCell>R{route.revenue}</TableCell>
                           <TableCell>{route.occupancy}</TableCell>
                           <TableCell>
                             <Badge variant={route.type === 'Free' ? 'secondary' : 'default'}>

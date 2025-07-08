@@ -79,6 +79,18 @@ const BookingPage = () => {
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
+    
+    // Check if it's a weekend (Saturday = 6, Sunday = 0)
+    const dayOfWeek = date.getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      toast({
+        title: "Weekend Booking Not Allowed",
+        description: "Students cannot book shuttle rides on weekends.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const isSelected = selectedDates.some(d => d.toDateString() === date.toDateString());
     if (isSelected) {
       setSelectedDates(selectedDates.filter(d => d.toDateString() !== date.toDateString()));
@@ -209,7 +221,8 @@ const BookingPage = () => {
                   onSelect={setSelectedDates}
                   disabled={(date) =>
                     date < new Date(new Date().setHours(0, 0, 0, 0)) ||
-                    date > new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                    date > new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) ||
+                    date.getDay() === 0 || date.getDay() === 6 // Disable weekends
                   }
                   className="rounded-md border"
                 />
