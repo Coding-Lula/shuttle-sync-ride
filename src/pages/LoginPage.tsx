@@ -101,16 +101,6 @@ const LoginPage = () => {
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
-            <div className="text-sm text-center text-gray-600">
-              <p className="mb-2">Demo accounts:</p>
-              <div className="space-y-1 text-xs">
-                <p><strong>Student:</strong> student@example.com</p>
-                <p><strong>Driver:</strong> driver@example.com</p>
-                <p><strong>Manager:</strong> manager@example.com</p>
-                <p><strong>Senior:</strong> senior@example.com</p>
-                <p><strong>Password:</strong> password</p>
-              </div>
-            </div>
           </CardFooter>
         </form>
       </Card>

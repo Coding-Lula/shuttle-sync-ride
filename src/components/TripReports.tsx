@@ -148,11 +148,13 @@ const TripReports = () => {
   };
 
   const getFilteredStudentData = () => {
-    if (!selectedStudent) return tripReportsData.perStudent;
+    
+    if (!selectedStudent || selectedStudent === 'all') return tripReportsData.perStudent;
+    
     return tripReportsData.perStudent.filter(student => 
       student.studentName.toLowerCase().includes(selectedStudent.toLowerCase())
     );
-  };
+};
 
   return (
     <div className="space-y-6">
@@ -183,7 +185,7 @@ const TripReports = () => {
                   <SelectValue placeholder="All Students" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Students</SelectItem>
+                  <SelectItem value="all">All Students</SelectItem>
                   <SelectItem value="john">John Doe</SelectItem>
                   <SelectItem value="sarah">Sarah Wilson</SelectItem>
                   <SelectItem value="mike">Mike Johnson</SelectItem>
@@ -311,6 +313,6 @@ const TripReports = () => {
       </Card>
     </div>
   );
-};
+}
 
 export default TripReports;
