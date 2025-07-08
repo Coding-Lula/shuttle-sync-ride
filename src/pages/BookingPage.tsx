@@ -179,6 +179,7 @@ const BookingPage = () => {
     }
   };
 
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b">
@@ -235,8 +236,10 @@ const BookingPage = () => {
               <CardContent>
                 <div className="grid grid-cols-1 gap-3">
                   {timeSlots.map((slot) => {
+
                     const hasPassed = selectedDates.length > 0 && selectedDates.every(date => isTimeSlotPassed(slot.time, date));
                     const isDisabled = !slot.available || hasPassed;
+
                     return (
                       <Button
                         key={slot.time}
