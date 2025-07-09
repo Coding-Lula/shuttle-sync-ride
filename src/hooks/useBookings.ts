@@ -82,8 +82,8 @@ export function useBookings() {
       
       const processedBookings = (data || []).map(booking => ({
         ...booking,
-        pickup: booking.pickup || 'Not specified',
-        destination: booking.destination || 'Not specified'
+        pickup: 'Not specified',
+        destination: 'Not specified'
       }));
       
       setBookings(processedBookings);
@@ -119,8 +119,6 @@ export function useBookings() {
           .select(`
             id,
             user_id,
-            pickup,
-            destination,
             cancelled,
             users:user_id (
               name,
@@ -135,8 +133,8 @@ export function useBookings() {
         const processedBookings = (bookings || []).map(booking => ({
           id: booking.id,
           user_id: booking.user_id,
-          pickup: booking.pickup || 'Not specified',
-          destination: booking.destination || 'Not specified',
+          pickup: 'Not specified',
+          destination: 'Not specified',
           pickedUp: false, // This would need to be tracked separately or added to the bookings table
           user: {
             name: booking.users?.name || 'Unknown',
