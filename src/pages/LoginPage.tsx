@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login, isLoading,user } = useAuth();
+  const { login, isLoading, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -26,20 +26,8 @@ const LoginPage = () => {
         title: "Login successful",
         description: "Welcome to the shuttle booking system!",
       });
-      // Navigation will be handled by the useEffect below once user state is updated
-    } else {
-      toast({
-        title: "Login failed",
-        description: "Invalid email or password",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Handle navigation after user state is updated
-  useEffect(() => {
-    if (user) {
-      switch (user.role) {
+      // Navigate based on role - this will be handled by the auth context
+      switch (user?.role) {
         case 'student':
           navigate('/student');
           break;
@@ -53,11 +41,18 @@ const LoginPage = () => {
           navigate('/senior');
           break;
         default:
-          navigate('/student'); // Default fallback
+          navigate('/unknown-role');
           break;
       }
+      
+    } else {
+      toast({
+        title: "Login failed",
+        description: "Invalid email or password",
+        variant: "destructive",
+      });
     }
-  }, [user, navigate]);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
