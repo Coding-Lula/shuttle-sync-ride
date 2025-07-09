@@ -1,5 +1,6 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../lib/supabaseClient'; // adjust path as needed
+import { supabase } from '../lib/supabaseClient';
 
 export interface User {
   id: string;
@@ -24,8 +25,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.id);
+        
+        if (session?.user) {
+          try {
+            const { data: profile, error } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+
+            if (error) {
+              console.error('Error fetching user profile:', error);
+              setUser(null);
+            } else if (profile) {
+              setUser(profile);
+            }
+          } catch (error) {
+            console.error('Error in auth state change:', error);
+            setUser(null);
+          }
+        } else {
+          setUser(null);
+        }
+        setIsLoading(false);
+      }
+    );
+
+    // Check for existing session
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          setIsLoading(false);
+          return;
+        }
+
         if (session?.user) {
           const { data: profile } = await supabase
             .from('users')
@@ -35,79 +75,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (profile) {
             setUser(profile);
-            localStorage.setItem('shuttleUser', JSON.stringify(profile));
           }
-        } else {
-          setUser(null);
-          localStorage.removeItem('shuttleUser');
         }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
         setIsLoading(false);
       }
-    );
-
-    // Initial session check
-    const loadUser = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        if (profile) {
-          setUser(profile);
-          localStorage.setItem('shuttleUser', JSON.stringify(profile));
-        }
-      }
-
-      setIsLoading(false);
     };
 
-    loadUser();
+    initializeAuth();
 
     return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
+    try {
+      setIsLoading(true);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+      if (error) {
+        console.error('Login error:', error.message);
+        return false;
+      }
 
-    if (error) {
-      console.error('Login error:', error.message);
-      setIsLoading(false);
-      return false;
-    }
-
-    const { user: authUser } = data;
-    const { data: profile } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', authUser.id)
-      .single();
-
-    if (profile) {
-      setUser(profile);
-      localStorage.setItem('shuttleUser', JSON.stringify(profile));
-      setIsLoading(false);
+      // The auth state change listener will handle setting the user
       return true;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
-    return false;
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    localStorage.removeItem('shuttleUser');
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   return (

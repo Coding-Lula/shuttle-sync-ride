@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -11,6 +12,8 @@ export interface Booking {
   distance_traveled: number;
   payment_method: string;
   cancelled: boolean;
+  pickup: string | null;
+  destination: string | null;
   created_at: string;
   // Joined data
   user?: {
@@ -76,7 +79,14 @@ export function useBookings() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setBookings(data || []);
+      
+      const processedBookings = (data || []).map(booking => ({
+        ...booking,
+        pickup: booking.pickup || 'Not specified',
+        destination: booking.destination || 'Not specified'
+      }));
+      
+      setBookings(processedBookings);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       toast({
@@ -109,6 +119,8 @@ export function useBookings() {
           .select(`
             id,
             user_id,
+            pickup,
+            destination,
             cancelled,
             users:user_id (
               name,
@@ -123,9 +135,9 @@ export function useBookings() {
         const processedBookings = (bookings || []).map(booking => ({
           id: booking.id,
           user_id: booking.user_id,
-          pickup: 'Main Campus', // You'll need to store this in bookings table
-          destination: 'Library', // You'll need to store this in bookings table
-          pickedUp: false, // You'll need to track this
+          pickup: booking.pickup || 'Not specified',
+          destination: booking.destination || 'Not specified',
+          pickedUp: false, // This would need to be tracked separately or added to the bookings table
           user: {
             name: booking.users?.name || 'Unknown',
             email: booking.users?.email || 'unknown@email.com'

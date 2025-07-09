@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -9,38 +9,146 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LogOut, Crown, TrendingUp, Users, Calendar, Download, BarChart3, DollarSign } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
-// Mock data for senior dashboard
-const overallStats = {
-  totalStudents: 156,
-  totalTrips: 1247,
-  totalRevenue: 9480,
-  monthlyGrowth: 12.5,
-  activeRoutes: 8,
-  avgOccupancy: 87
-};
+interface OverallStats {
+  totalStudents: number;
+  totalTrips: number;
+  totalRevenue: number;
+  monthlyGrowth: number;
+  activeRoutes: number;
+  avgOccupancy: number;
+}
 
-const monthlyData = [
-  { month: 'January', trips: 98, revenue: 720, students: 45 },
-  { month: 'February', trips: 112, revenue: 810, students: 48 },
-  { month: 'March', trips: 124, revenue: 888, students: 52 },
-  { month: 'April', trips: 118, revenue: 852, students: 49 },
-  { month: 'May', trips: 132, revenue: 990, students: 55 },
-  { month: 'June', trips: 145, revenue: 1068, students: 58 }
-];
+interface MonthlyData {
+  month: string;
+  trips: number;
+  revenue: number;
+  students: number;
+}
 
-const routePerformance = [
-  { route: 'Dormitory A → Main Campus', trips: 245, revenue: 0, occupancy: '94%', type: 'Free' },
-  { route: 'Main Campus → Library', trips: 198, revenue: 0, occupancy: '89%', type: 'Free' },
-  { route: 'Sports Center → Dormitory B', trips: 156, revenue: 4680, occupancy: '78%', type: 'Paid' },
-  { route: 'Medical Center → Main Campus', trips: 134, revenue: 4020, occupancy: '71%', type: 'Paid' },
-  { route: 'Library → Dormitory A', trips: 112, revenue: 0, occupancy: '83%', type: 'Free' }
-];
+interface RoutePerformance {
+  route: string;
+  trips: number;
+  revenue: number;
+  occupancy: string;
+  type: string;
+}
 
 const SeniorDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [overallStats, setOverallStats] = useState<OverallStats>({
+    totalStudents: 0,
+    totalTrips: 0,
+    totalRevenue: 0,
+    monthlyGrowth: 0,
+    activeRoutes: 0,
+    avgOccupancy: 0
+  });
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [routePerformance, setRoutePerformance] = useState<RoutePerformance[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Fetch overall stats
+      const [studentsData, bookingsData, tripsData] = await Promise.all([
+        supabase.from('users').select('*').eq('role', 'student'),
+        supabase.from('bookings').select('*, trips(date)').eq('cancelled', false),
+        supabase.from('trips').select('*, bookings(*)')
+      ]);
+
+      if (studentsData.error) throw studentsData.error;
+      if (bookingsData.error) throw bookingsData.error;
+      if (tripsData.error) throw tripsData.error;
+
+      const totalStudents = studentsData.data?.length || 0;
+      const totalBookings = bookingsData.data?.length || 0;
+      const totalRevenue = bookingsData.data?.reduce((sum, booking) => sum + (booking.cost || 0), 0) || 0;
+      const activeRoutes = new Set(tripsData.data?.map(trip => JSON.stringify(trip.route)).filter(Boolean)).size;
+      
+      // Calculate average occupancy (assuming 15 seat capacity)
+      const totalCapacity = (tripsData.data?.length || 0) * 15;
+      const avgOccupancy = totalCapacity > 0 ? Math.round((totalBookings / totalCapacity) * 100) : 0;
+
+      setOverallStats({
+        totalStudents,
+        totalTrips: totalBookings,
+        totalRevenue,
+        monthlyGrowth: 0, // Would need historical data to calculate
+        activeRoutes,
+        avgOccupancy
+      });
+
+      // Process monthly data
+      const monthlyStats: Record<string, MonthlyData> = {};
+      bookingsData.data?.forEach(booking => {
+        if (booking.trips?.date) {
+          const date = new Date(booking.trips.date);
+          const monthKey = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+          
+          if (!monthlyStats[monthKey]) {
+            monthlyStats[monthKey] = {
+              month: monthKey,
+              trips: 0,
+              revenue: 0,
+              students: new Set().size
+            };
+          }
+          
+          monthlyStats[monthKey].trips += 1;
+          monthlyStats[monthKey].revenue += booking.cost || 0;
+        }
+      });
+
+      setMonthlyData(Object.values(monthlyStats).slice(-6)); // Last 6 months
+
+      // Process route performance
+      const routeStats: Record<string, RoutePerformance> = {};
+      tripsData.data?.forEach(trip => {
+        if (trip.route && Array.isArray(trip.route)) {
+          const routeKey = trip.route.join(' → ');
+          const validBookings = (trip.bookings || []).filter(b => !b.cancelled);
+          
+          if (!routeStats[routeKey]) {
+            routeStats[routeKey] = {
+              route: routeKey,
+              trips: 0,
+              revenue: 0,
+              occupancy: '0%',
+              type: 'Free'
+            };
+          }
+          
+          const stats = routeStats[routeKey];
+          stats.trips += validBookings.length;
+          stats.revenue += validBookings.reduce((sum, b) => sum + (b.cost || 0), 0);
+          stats.occupancy = `${Math.round((validBookings.length / 15) * 100)}%`;
+          stats.type = stats.revenue > 0 ? 'Paid' : 'Free';
+        }
+      });
+
+      setRoutePerformance(Object.values(routeStats));
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch dashboard data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -84,7 +192,6 @@ const SeniorDashboard = () => {
           throw new Error('Invalid data type');
       }
 
-      // Create and trigger download
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
@@ -107,6 +214,14 @@ const SeniorDashboard = () => {
       });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">Loading dashboard...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -162,7 +277,7 @@ const SeniorDashboard = () => {
               <div className="flex items-center space-x-2">
                 <DollarSign className="w-5 h-5 text-purple-600" />
                 <div>
-                  <p className="text-2xl font-bold">R{overallStats.totalRevenue}</p>
+                  <p className="text-2xl font-bold">R{overallStats.totalRevenue.toFixed(2)}</p>
                   <p className="text-sm text-gray-600">Total Revenue</p>
                 </div>
               </div>
@@ -245,7 +360,7 @@ const SeniorDashboard = () => {
                         <TableRow key={index}>
                           <TableCell className="font-medium">{item.month}</TableCell>
                           <TableCell>{item.trips}</TableCell>
-                          <TableCell>R{item.revenue}</TableCell>
+                          <TableCell>R{item.revenue.toFixed(2)}</TableCell>
                           <TableCell>{item.students}</TableCell>
                         </TableRow>
                       ))}
@@ -288,7 +403,7 @@ const SeniorDashboard = () => {
                         <TableRow key={index}>
                           <TableCell className="font-medium">{route.route}</TableCell>
                           <TableCell>{route.trips}</TableCell>
-                          <TableCell>R{route.revenue}</TableCell>
+                          <TableCell>R{route.revenue.toFixed(2)}</TableCell>
                           <TableCell>{route.occupancy}</TableCell>
                           <TableCell>
                             <Badge variant={route.type === 'Free' ? 'secondary' : 'default'}>

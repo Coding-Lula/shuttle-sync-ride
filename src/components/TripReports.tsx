@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,58 +8,270 @@ import { Badge } from '@/components/ui/badge';
 import { BarChart3, Download, FileSpreadsheet } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
-// Mock data for reports (ZAR currency)
-const tripReportsData = {
-  perStudent: [
-    { studentName: 'John Doe', totalTrips: 24, paidTrips: 8, freeTrips: 16, totalDistance: 54.2, totalCost: 240 },
-    { studentName: 'Sarah Wilson', totalTrips: 18, paidTrips: 6, freeTrips: 12, totalDistance: 41.4, totalCost: 180 },
-    { studentName: 'Mike Johnson', totalTrips: 31, paidTrips: 12, freeTrips: 19, totalDistance: 69.3, totalCost: 360 },
-    { studentName: 'Emily Brown', totalTrips: 12, paidTrips: 9, freeTrips: 3, totalDistance: 28.8, totalCost: 270 }
-  ],
-  perTimeSlot: [
-    { timeSlot: '07:30', totalBookings: 89, avgOccupancy: '94%', revenue: 0, type: 'free' },
-    { timeSlot: '08:45', totalBookings: 76, avgOccupancy: '87%', revenue: 0, type: 'free' },
-    { timeSlot: '09:45', totalBookings: 45, avgOccupancy: '72%', revenue: 1350, type: 'paid' },
-    { timeSlot: '14:45', totalBookings: 52, avgOccupancy: '81%', revenue: 1560, type: 'paid' },
-    { timeSlot: '16:45', totalBookings: 83, avgOccupancy: '91%', revenue: 0, type: 'free' }
-  ],
-  customDateRange: [
-    { date: '2024-06-24', totalTrips: 23, revenue: 510, avgDistance: 2.1 },
-    { date: '2024-06-25', totalTrips: 19, revenue: 420, avgDistance: 1.9 },
-    { date: '2024-06-26', totalTrips: 27, revenue: 570, avgDistance: 2.3 },
-    { date: '2024-06-27', totalTrips: 21, revenue: 450, avgDistance: 2.0 },
-    { date: '2024-06-28', totalTrips: 25, revenue: 540, avgDistance: 2.2 }
-  ]
-};
+interface StudentReport {
+  studentName: string;
+  totalTrips: number;
+  paidTrips: number;
+  freeTrips: number;
+  totalDistance: number;
+  totalCost: number;
+}
 
-// Calculate most common destination
-const getMostCommonDestination = () => {
-  const destinations = ['Main Campus', 'Library', 'Sports Center', 'Medical Center', 'Dormitory A', 'Dormitory B'];
-  const trips = [45, 38, 29, 25, 42, 31]; // Mock trip counts per destination
-  const maxIndex = trips.indexOf(Math.max(...trips));
-  return destinations[maxIndex];
-};
+interface TimeSlotReport {
+  timeSlot: string;
+  totalBookings: number;
+  avgOccupancy: string;
+  revenue: number;
+  type: string;
+}
+
+interface DateRangeReport {
+  date: string;
+  totalTrips: number;
+  revenue: number;
+  avgDistance: number;
+}
 
 const TripReports = () => {
   const [reportType, setReportType] = useState<'student' | 'timeSlot' | 'dateRange'>('student');
   const [selectedStudent, setSelectedStudent] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [studentReports, setStudentReports] = useState<StudentReport[]>([]);
+  const [timeSlotReports, setTimeSlotReports] = useState<TimeSlotReport[]>([]);
+  const [dateRangeReports, setDateRangeReports] = useState<DateRangeReport[]>([]);
+  const [students, setStudents] = useState<{name: string, value: string}[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Fetch students for dropdown
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, name')
+          .eq('role', 'student');
+        
+        if (error) throw error;
+        
+        const studentOptions = (data || []).map(student => ({
+          name: student.name,
+          value: student.name.toLowerCase()
+        }));
+        
+        setStudents(studentOptions);
+      } catch (error) {
+        console.error('Error fetching students:', error);
+      }
+    };
+
+    fetchStudents();
+  }, []);
+
+  // Fetch reports based on type
+  useEffect(() => {
+    const fetchReports = async () => {
+      setIsLoading(true);
+      try {
+        if (reportType === 'student') {
+          await fetchStudentReports();
+        } else if (reportType === 'timeSlot') {
+          await fetchTimeSlotReports();
+        } else if (reportType === 'dateRange') {
+          await fetchDateRangeReports();
+        }
+      } catch (error) {
+        console.error('Error fetching reports:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch reports",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchReports();
+  }, [reportType, selectedStudent, dateFrom, dateTo]);
+
+  const fetchStudentReports = async () => {
+    try {
+      const { data: bookings, error } = await supabase
+        .from('bookings')
+        .select(`
+          cost,
+          distance_traveled,
+          payment_method,
+          users:user_id (
+            name
+          )
+        `)
+        .eq('cancelled', false);
+
+      if (error) throw error;
+
+      const studentStats: Record<string, StudentReport> = {};
+
+      (bookings || []).forEach(booking => {
+        const studentName = booking.users?.name || 'Unknown';
+        
+        if (!studentStats[studentName]) {
+          studentStats[studentName] = {
+            studentName,
+            totalTrips: 0,
+            paidTrips: 0,
+            freeTrips: 0,
+            totalDistance: 0,
+            totalCost: 0
+          };
+        }
+
+        const stats = studentStats[studentName];
+        stats.totalTrips += 1;
+        stats.totalDistance += booking.distance_traveled || 0;
+        stats.totalCost += booking.cost || 0;
+
+        if (booking.payment_method === 'free') {
+          stats.freeTrips += 1;
+        } else {
+          stats.paidTrips += 1;
+        }
+      });
+
+      let reports = Object.values(studentStats);
+      
+      if (selectedStudent && selectedStudent !== 'all') {
+        reports = reports.filter(report => 
+          report.studentName.toLowerCase().includes(selectedStudent.toLowerCase())
+        );
+      }
+
+      setStudentReports(reports);
+    } catch (error) {
+      console.error('Error fetching student reports:', error);
+    }
+  };
+
+  const fetchTimeSlotReports = async () => {
+    try {
+      const { data: trips, error } = await supabase
+        .from('trips')
+        .select(`
+          time_slot,
+          bookings:bookings(
+            cost,
+            payment_method,
+            cancelled
+          )
+        `);
+
+      if (error) throw error;
+
+      const timeSlotStats: Record<string, TimeSlotReport> = {};
+
+      (trips || []).forEach(trip => {
+        const timeSlot = trip.time_slot;
+        
+        if (!timeSlotStats[timeSlot]) {
+          timeSlotStats[timeSlot] = {
+            timeSlot,
+            totalBookings: 0,
+            avgOccupancy: '0%',
+            revenue: 0,
+            type: 'mixed'
+          };
+        }
+
+        const validBookings = (trip.bookings || []).filter(b => !b.cancelled);
+        const stats = timeSlotStats[timeSlot];
+        
+        stats.totalBookings += validBookings.length;
+        stats.revenue += validBookings.reduce((sum, b) => sum + (b.cost || 0), 0);
+        
+        // Determine if mostly free or paid
+        const paidBookings = validBookings.filter(b => b.payment_method !== 'free').length;
+        const freeBookings = validBookings.length - paidBookings;
+        stats.type = freeBookings > paidBookings ? 'free' : 'paid';
+        
+        // Calculate occupancy (assuming 15 seat capacity)
+        stats.avgOccupancy = `${Math.round((validBookings.length / 15) * 100)}%`;
+      });
+
+      setTimeSlotReports(Object.values(timeSlotStats));
+    } catch (error) {
+      console.error('Error fetching time slot reports:', error);
+    }
+  };
+
+  const fetchDateRangeReports = async () => {
+    try {
+      let query = supabase
+        .from('trips')
+        .select(`
+          date,
+          bookings:bookings(
+            cost,
+            distance_traveled,
+            cancelled
+          )
+        `);
+
+      if (dateFrom) {
+        query = query.gte('date', dateFrom);
+      }
+      if (dateTo) {
+        query = query.lte('date', dateTo);
+      }
+
+      const { data: trips, error } = await query;
+
+      if (error) throw error;
+
+      const dateStats: Record<string, DateRangeReport> = {};
+
+      (trips || []).forEach(trip => {
+        const date = trip.date;
+        
+        if (!dateStats[date]) {
+          dateStats[date] = {
+            date,
+            totalTrips: 0,
+            revenue: 0,
+            avgDistance: 0
+          };
+        }
+
+        const validBookings = (trip.bookings || []).filter(b => !b.cancelled);
+        const stats = dateStats[date];
+        
+        stats.totalTrips += validBookings.length;
+        stats.revenue += validBookings.reduce((sum, b) => sum + (b.cost || 0), 0);
+        
+        const totalDistance = validBookings.reduce((sum, b) => sum + (b.distance_traveled || 0), 0);
+        stats.avgDistance = validBookings.length > 0 ? totalDistance / validBookings.length : 0;
+      });
+
+      setDateRangeReports(Object.values(dateStats).sort((a, b) => a.date.localeCompare(b.date)));
+    } catch (error) {
+      console.error('Error fetching date range reports:', error);
+    }
+  };
 
   const exportToCSV = () => {
     try {
-      // Create CSV data based on current report type
       let csvContent = '';
       let filename = '';
       
       switch (reportType) {
         case 'student':
-          csvContent = 'Student Name,Total Trips,Paid Trips,Free Trips,Distance (km),Total Cost ($)\n';
+          csvContent = 'Student Name,Total Trips,Paid Trips,Free Trips,Distance (km),Total Cost (ZAR)\n';
           const studentData = selectedStudent 
-            ? tripReportsData.perStudent.filter(s => s.studentName.toLowerCase().includes(selectedStudent.toLowerCase()))
-            : tripReportsData.perStudent;
+            ? studentReports.filter(s => s.studentName.toLowerCase().includes(selectedStudent.toLowerCase()))
+            : studentReports;
           
           studentData.forEach(student => {
             csvContent += `"${student.studentName}",${student.totalTrips},${student.paidTrips},${student.freeTrips},${student.totalDistance},${student.totalCost}\n`;
@@ -68,23 +280,22 @@ const TripReports = () => {
           break;
           
         case 'timeSlot':
-          csvContent = 'Time Slot,Total Bookings,Avg Occupancy,Type,Revenue ($)\n';
-          tripReportsData.perTimeSlot.forEach(slot => {
+          csvContent = 'Time Slot,Total Bookings,Avg Occupancy,Type,Revenue (ZAR)\n';
+          timeSlotReports.forEach(slot => {
             csvContent += `${slot.timeSlot},${slot.totalBookings},"${slot.avgOccupancy}",${slot.type},${slot.revenue}\n`;
           });
           filename = 'timeslot-report.csv';
           break;
           
         case 'dateRange':
-          csvContent = 'Date,Total Trips,Revenue ($),Avg Distance (km)\n';
-          tripReportsData.customDateRange.forEach(day => {
-            csvContent += `${day.date},${day.totalTrips},${day.revenue},${day.avgDistance}\n`;
+          csvContent = 'Date,Total Trips,Revenue (ZAR),Avg Distance (km)\n';
+          dateRangeReports.forEach(day => {
+            csvContent += `${day.date},${day.totalTrips},${day.revenue},${day.avgDistance.toFixed(2)}\n`;
           });
           filename = 'date-range-report.csv';
           break;
       }
 
-      // Create and trigger download
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
@@ -110,20 +321,15 @@ const TripReports = () => {
 
   const exportToExcel = () => {
     try {
-      const mostCommonDestination = getMostCommonDestination();
-      
-      // Create comprehensive Excel data with summary information
       let excelContent = 'Summary Report\n';
-      excelContent += `Most Common Destination,${mostCommonDestination}\n`;
-      excelContent += `Total Students,${tripReportsData.perStudent.length}\n`;
-      excelContent += `Total Revenue,R${tripReportsData.perStudent.reduce((sum, student) => sum + student.totalCost, 0)}\n\n`;
+      excelContent += `Total Students,${students.length}\n`;
+      excelContent += `Total Revenue,R${studentReports.reduce((sum, student) => sum + student.totalCost, 0)}\n\n`;
       
-      excelContent += 'Student Name,Trips Taken,Total Cost ($)\n';
-      tripReportsData.perStudent.forEach(student => {
+      excelContent += 'Student Name,Trips Taken,Total Cost (ZAR)\n';
+      studentReports.forEach(student => {
         excelContent += `"${student.studentName}",${student.totalTrips},${student.totalCost}\n`;
       });
 
-      // Create and trigger download
       const blob = new Blob([excelContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
@@ -136,7 +342,7 @@ const TripReports = () => {
 
       toast({
         title: "Excel export successful",
-        description: `Manager report exported with summary data including most common destination: ${mostCommonDestination}`,
+        description: "Manager report exported with summary data",
       });
     } catch (error) {
       toast({
@@ -146,15 +352,6 @@ const TripReports = () => {
       });
     }
   };
-
-  const getFilteredStudentData = () => {
-    
-    if (!selectedStudent || selectedStudent === 'all') return tripReportsData.perStudent;
-    
-    return tripReportsData.perStudent.filter(student => 
-      student.studentName.toLowerCase().includes(selectedStudent.toLowerCase())
-    );
-};
 
   return (
     <div className="space-y-6">
@@ -186,10 +383,11 @@ const TripReports = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Students</SelectItem>
-                  <SelectItem value="john">John Doe</SelectItem>
-                  <SelectItem value="sarah">Sarah Wilson</SelectItem>
-                  <SelectItem value="mike">Mike Johnson</SelectItem>
-                  <SelectItem value="emily">Emily Brown</SelectItem>
+                  {students.map((student) => (
+                    <SelectItem key={student.value} value={student.value}>
+                      {student.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             )}
@@ -222,92 +420,98 @@ const TripReports = () => {
             </Button>
           </div>
 
-          {/* Per Student Report */}
-          {reportType === 'student' && (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Student Name</TableHead>
-                    <TableHead>Total Trips</TableHead>
-                    <TableHead>Paid Trips</TableHead>
-                    <TableHead>Free Trips</TableHead>
-                    <TableHead>Distance (km)</TableHead>
-                    <TableHead>Total Cost ($)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {getFilteredStudentData().map((student, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{student.studentName}</TableCell>
-                      <TableCell>{student.totalTrips}</TableCell>
-                      <TableCell>{student.paidTrips}</TableCell>
-                      <TableCell>{student.freeTrips}</TableCell>
-                      <TableCell>{student.totalDistance}</TableCell>
-                      <TableCell>R{student.totalCost}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          {isLoading ? (
+            <div className="text-center py-8">Loading reports...</div>
+          ) : (
+            <>
+              {/* Per Student Report */}
+              {reportType === 'student' && (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Student Name</TableHead>
+                        <TableHead>Total Trips</TableHead>
+                        <TableHead>Paid Trips</TableHead>
+                        <TableHead>Free Trips</TableHead>
+                        <TableHead>Distance (km)</TableHead>
+                        <TableHead>Total Cost (ZAR)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {studentReports.map((student, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-medium">{student.studentName}</TableCell>
+                          <TableCell>{student.totalTrips}</TableCell>
+                          <TableCell>{student.paidTrips}</TableCell>
+                          <TableCell>{student.freeTrips}</TableCell>
+                          <TableCell>{student.totalDistance.toFixed(2)}</TableCell>
+                          <TableCell>R{student.totalCost.toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
 
-          {/* Per Time Slot Report */}
-          {reportType === 'timeSlot' && (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Time Slot</TableHead>
-                    <TableHead>Total Bookings</TableHead>
-                    <TableHead>Avg Occupancy</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Revenue ($)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tripReportsData.perTimeSlot.map((slot, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{slot.timeSlot}</TableCell>
-                      <TableCell>{slot.totalBookings}</TableCell>
-                      <TableCell>{slot.avgOccupancy}</TableCell>
-                      <TableCell>
-                        <Badge variant={slot.type === 'free' ? 'secondary' : 'default'}>
-                          {slot.type === 'free' ? 'Free' : 'Paid'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>R{slot.revenue}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+              {/* Per Time Slot Report */}
+              {reportType === 'timeSlot' && (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Time Slot</TableHead>
+                        <TableHead>Total Bookings</TableHead>
+                        <TableHead>Avg Occupancy</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Revenue (ZAR)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {timeSlotReports.map((slot, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-medium">{slot.timeSlot}</TableCell>
+                          <TableCell>{slot.totalBookings}</TableCell>
+                          <TableCell>{slot.avgOccupancy}</TableCell>
+                          <TableCell>
+                            <Badge variant={slot.type === 'free' ? 'secondary' : 'default'}>
+                              {slot.type === 'free' ? 'Free' : 'Paid'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>R{slot.revenue.toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
 
-          {/* Date Range Report */}
-          {reportType === 'dateRange' && (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Total Trips</TableHead>
-                    <TableHead>Revenue ($)</TableHead>
-                    <TableHead>Avg Distance (km)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tripReportsData.customDateRange.map((day, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{day.date}</TableCell>
-                      <TableCell>{day.totalTrips}</TableCell>
-                      <TableCell>R{day.revenue}</TableCell>
-                      <TableCell>{day.avgDistance}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+              {/* Date Range Report */}
+              {reportType === 'dateRange' && (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Total Trips</TableHead>
+                        <TableHead>Revenue (ZAR)</TableHead>
+                        <TableHead>Avg Distance (km)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dateRangeReports.map((day, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-medium">{day.date}</TableCell>
+                          <TableCell>{day.totalTrips}</TableCell>
+                          <TableCell>R{day.revenue.toFixed(2)}</TableCell>
+                          <TableCell>{day.avgDistance.toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
