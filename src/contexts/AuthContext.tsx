@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface User {
   id: string;
@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               console.error('Error fetching user profile:', error);
               setUser(null);
             } else if (profile) {
-              setUser(profile);
+              setUser(profile as User);
             }
           } catch (error) {
             console.error('Error in auth state change:', error);
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .single();
 
           if (profile) {
-            setUser(profile);
+            setUser(profile as User);
           }
         }
       } catch (error) {
