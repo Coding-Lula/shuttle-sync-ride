@@ -1,6 +1,5 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client'; // adjust path as needed
 
 export interface User {
   id: string;
@@ -25,101 +24,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.id);
-        
-        if (session?.user) {
-          try {
-            const { data: profile, error } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
+    // Load initial session
+    const loadUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
 
-            if (error) {
-              console.error('Error fetching user profile:', error);
-              setUser(null);
-            } else if (profile) {
-              setUser(profile as User);
-            }
-          } catch (error) {
-            console.error('Error in auth state change:', error);
-            setUser(null);
-          }
-        } else {
-          setUser(null);
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile) {
+          setUser(profile);
+          localStorage.setItem('shuttleUser', JSON.stringify(profile));
         }
-        setIsLoading(false);
       }
-    );
-
-    // Check for existing session
-    const initializeAuth = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Error getting session:', error);
-          setIsLoading(false);
-          return;
-        }
-
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-
-          if (profile) {
-            setUser(profile as User);
-          }
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-      } finally {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     };
 
-    initializeAuth();
+    loadUser();
+
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'SIGNED_OUT') {
+          setUser(null);
+          localStorage.removeItem('shuttleUser');
+        }
+      }
+    );
 
     return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    try {
-      setIsLoading(true);
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    setIsLoading(true);
 
-      if (error) {
-        console.error('Login error:', error.message);
-        return false;
-      }
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      // The auth state change listener will handle setting the user
-      return true;
-    } catch (error) {
-      console.error('Login error:', error);
-      return false;
-    } finally {
+    if (error) {
+      console.error('Login error:', error.message);
       setIsLoading(false);
+      return false;
     }
+
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profile) {
+        setUser(profile);
+        localStorage.setItem('shuttleUser', JSON.stringify(profile));
+      }
+    }
+
+    setIsLoading(false);
+    return true;
   };
 
   const logout = async () => {
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+    setIsLoading(true);
+    await supabase.auth.signOut();
+    setUser(null);
+    localStorage.removeItem('shuttleUser');
+    setIsLoading(false);
   };
 
   return (

@@ -37,8 +37,9 @@ const DriverDashboard = () => {
     logout();
     navigate('/login');
   };
-
-  const togglePassengerPickup = (tripId: string, passengerId: string) => {
+/*
+  const togglePassengerPickup = (tripId: string, passengerId: string) => 
+  {
     setTrips(trips.map(trip => 
       trip.id === tripId 
         ? {
@@ -51,7 +52,55 @@ const DriverDashboard = () => {
           }
         : trip
     ));
-  };
+  };*/
+  // Update the toggle function to work with Supabase
+const togglePassengerPickup = async (tripId: string, bookingId: string) => {
+  try {
+    // Find the booking in the current state
+    const trip = trips.find(t => t.id === tripId);
+    const booking = trip?.bookings.find(b => b.id === bookingId);
+    
+    if (!trip || !booking) {
+      console.warn('Trip or booking not found');
+      return;
+    }
+
+    // Calculate the new picked_up status
+    const newPickedUpStatus = !booking.picked_up;
+
+    // Update in Supabase
+    const { error } = await supabase
+      .from('bookings')
+      .update({ 
+        picked_up: newPickedUpStatus,
+        updated_at: new Date().toISOString() // Track when status changed
+      })
+      .eq('id', bookingId);
+
+    if (error) {
+      throw error;
+    }
+
+    // Optimistically update the UI
+    setTrips(trips.map(t => 
+      t.id === tripId 
+        ? {
+            ...t,
+            bookings: t.bookings.map(b =>
+              b.id === bookingId 
+                ? { ...b, picked_up: newPickedUpStatus } 
+                : b
+            )
+          }
+        : t
+    ));
+
+  } catch (error) {
+    console.error('Error updating pickup status:', error);
+    // Optional: Revert UI if Supabase update fails
+    setTrips([...trips]); // This will force a re-render with original data
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
