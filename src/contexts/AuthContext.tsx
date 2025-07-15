@@ -42,8 +42,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (profile) {
             console.log('Setting user from auth state change:', profile);
-            setUser(profile);
-            localStorage.setItem('shuttleUser', JSON.stringify(profile));
+            const typedUser: User = {
+              id: profile.id,
+              email: profile.email,
+              name: profile.name,
+              role: profile.role as 'student' | 'driver' | 'manager' | 'senior',
+              studentType: profile.student_type as 'community' | 'yoyl' | undefined,
+              startLocation: profile.start_location || undefined
+            };
+            setUser(typedUser);
+            localStorage.setItem('shuttleUser', JSON.stringify(typedUser));
           }
         } else {
           console.log('Clearing user from auth state change');
@@ -70,8 +78,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (profile) {
             console.log('Setting user from initial session:', profile);
-            setUser(profile);
-            localStorage.setItem('shuttleUser', JSON.stringify(profile));
+            const typedUser: User = {
+              id: profile.id,
+              email: profile.email,
+              name: profile.name,
+              role: profile.role as 'student' | 'driver' | 'manager' | 'senior',
+              studentType: profile.student_type as 'community' | 'yoyl' | undefined,
+              startLocation: profile.start_location || undefined
+            };
+            setUser(typedUser);
+            localStorage.setItem('shuttleUser', JSON.stringify(typedUser));
           }
         }
       } catch (error) {
@@ -115,8 +131,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (profile) {
           console.log('Profile fetched after login:', profile);
-          setUser(profile);
-          localStorage.setItem('shuttleUser', JSON.stringify(profile));
+          const typedUser: User = {
+            id: profile.id,
+            email: profile.email,
+            name: profile.name,
+            role: profile.role as 'student' | 'driver' | 'manager' | 'senior',
+            studentType: profile.student_type as 'community' | 'yoyl' | undefined,
+            startLocation: profile.start_location || undefined
+          };
+          setUser(typedUser);
+          localStorage.setItem('shuttleUser', JSON.stringify(typedUser));
         }
       }
 

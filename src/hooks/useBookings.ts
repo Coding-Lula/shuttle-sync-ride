@@ -7,26 +7,33 @@ export interface Booking {
   id: string;
   user_id: string;
   trip_id: string | null;
-  stop_id: string | null;
+  pickup_stop_id: string | null;
+  dropoff_stop_id: string | null;
   cost: number;
   distance_traveled: number;
   payment_method: string;
   cancelled: boolean;
-  pickup: string | null;
-  destination: string | null;
+  date: string;
+  status: string;
   created_at: string;
   // Joined data
   user?: {
     name: string;
     email: string;
   };
-  stop?: {
+  pickup_stop?: {
+    name: string;
+    distance_km: number;
+  };
+  dropoff_stop?: {
     name: string;
     distance_km: number;
   };
   trip?: {
     date: string;
-    time_slot: string;
+    time_slot: {
+      start_time: string;
+    };
     route: string[];
   };
 }
@@ -34,7 +41,9 @@ export interface Booking {
 export interface TripWithBookings {
   id: string;
   date: string;
-  time_slot: string;
+  time_slot: {
+    start_time: string;
+  };
   route: string[];
   driver_id: string | null;
   bookings: Array<{
@@ -65,14 +74,20 @@ export function useBookings() {
             name,
             email
           ),
-          stops:stop_id (
+          pickup_stop:pickup_stop_id (
+            name,
+            distance_km
+          ),
+          dropoff_stop:dropoff_stop_id (
             name,
             distance_km
           ),
           trips:trip_id (
             date,
-            time_slot,
-            route
+            route,
+            time_slots:time_slot_id (
+              start_time
+            )
           )
         `)
         .eq('cancelled', false)
@@ -82,8 +97,11 @@ export function useBookings() {
       
       const processedBookings = (data || []).map(booking => ({
         ...booking,
-        pickup: 'Not specified',
-        destination: 'Not specified'
+        trip: booking.trips ? {
+          date: booking.trips.date,
+          time_slot: booking.trips.time_slots || { start_time: 'Not specified' },
+          route: booking.trips.route || []
+        } : undefined
       }));
       
       setBookings(processedBookings);
@@ -99,15 +117,67 @@ export function useBookings() {
     }
   };
 
+  const fetchUserBookings = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          pickup_stop:pickup_stop_id (
+            name,
+            distance_km
+          ),
+          dropoff_stop:dropoff_stop_id (
+            name,
+            distance_km
+          ),
+          trips:trip_id (
+            date,
+            route,
+            time_slots:time_slot_id (
+              start_time
+            )
+          )
+        `)
+        .eq('user_id', userId)
+        .eq('cancelled', false)
+        .order('date', { ascending: true });
+
+      if (error) throw error;
+      
+      return (data || []).map(booking => ({
+        ...booking,
+        trip: booking.trips ? {
+          date: booking.trips.date,
+          time_slot: booking.trips.time_slots || { start_time: 'Not specified' },
+          route: booking.trips.route || []
+        } : undefined
+      }));
+    } catch (error) {
+      console.error('Error fetching user bookings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch your bookings",
+        variant: "destructive",
+      });
+      return [];
+    }
+  };
+
   const fetchTodaysTripsWithBookings = async (): Promise<TripWithBookings[]> => {
     try {
       const today = new Date().toISOString().split('T')[0];
       
       const { data: trips, error: tripsError } = await supabase
         .from('trips')
-        .select('*')
+        .select(`
+          *,
+          time_slots:time_slot_id (
+            start_time
+          )
+        `)
         .eq('date', today)
-        .order('time_slot');
+        .order('time_slot_id');
 
       if (tripsError) throw tripsError;
 
@@ -120,6 +190,13 @@ export function useBookings() {
             id,
             user_id,
             cancelled,
+            picked_up,
+            pickup_stop:pickup_stop_id (
+              name
+            ),
+            dropoff_stop:dropoff_stop_id (
+              name
+            ),
             users:user_id (
               name,
               email
@@ -133,9 +210,9 @@ export function useBookings() {
         const processedBookings = (bookings || []).map(booking => ({
           id: booking.id,
           user_id: booking.user_id,
-          pickup: 'Not specified',
-          destination: 'Not specified',
-          pickedUp: false, // This would need to be tracked separately or added to the bookings table
+          pickup: booking.pickup_stop?.name || 'Not specified',
+          destination: booking.dropoff_stop?.name || 'Not specified',
+          pickedUp: booking.picked_up || false,
           user: {
             name: booking.users?.name || 'Unknown',
             email: booking.users?.email || 'unknown@email.com'
@@ -144,6 +221,7 @@ export function useBookings() {
 
         tripsWithBookings.push({
           ...trip,
+          time_slot: trip.time_slots || { start_time: 'Not specified' },
           bookings: processedBookings
         });
       }
@@ -168,6 +246,7 @@ export function useBookings() {
     bookings,
     isLoading,
     fetchTodaysTripsWithBookings,
+    fetchUserBookings,
     refetch: fetchBookings
   };
 }

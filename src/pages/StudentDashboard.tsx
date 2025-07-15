@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Bus, Calendar, CreditCard, LogOut } from 'lucide-react';
+import UserBookings from '@/components/UserBookings';
 
 const StudentDashboard = () => {
   const { user, logout } = useAuth();
@@ -70,6 +71,11 @@ const StudentDashboard = () => {
               </CardDescription>
             </CardHeader>
           </Card>
+        </div>
+
+        {/* User Bookings */}
+        <div className="mb-8">
+          <UserBookings />
         </div>
 
         {/* User Info */}
