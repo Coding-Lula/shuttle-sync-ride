@@ -29,30 +29,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('Auth state change:', event, session?.user?.id);
         
         if (session?.user) {
           // Fetch user profile when we have a session
-          const { data: profile } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
+          setTimeout(async () => {
+            const { data: profile } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
 
-          if (profile) {
-            console.log('Setting user from auth state change:', profile);
-            const typedUser: User = {
-              id: profile.id,
-              email: profile.email,
-              name: profile.name,
-              role: profile.role as 'student' | 'driver' | 'manager' | 'senior',
-              studentType: profile.student_type as 'community' | 'yoyl' | undefined,
-              startLocation: profile.start_location || undefined
-            };
-            setUser(typedUser);
-            localStorage.setItem('shuttleUser', JSON.stringify(typedUser));
-          }
+            if (profile) {
+              console.log('Setting user from auth state change:', profile);
+              const typedUser: User = {
+                id: profile.id,
+                email: profile.email,
+                name: profile.name,
+                role: profile.role as 'student' | 'driver' | 'manager' | 'senior',
+                studentType: profile.student_type as 'community' | 'yoyl' | undefined,
+                startLocation: profile.start_location || undefined
+              };
+              setUser(typedUser);
+              localStorage.setItem('shuttleUser', JSON.stringify(typedUser));
+            }
+          }, 0);
         } else {
           console.log('Clearing user from auth state change');
           setUser(null);
