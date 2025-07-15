@@ -97,11 +97,16 @@ export function useBookings() {
       
       const processedBookings = (data || []).map(booking => ({
         ...booking,
+        cost: booking.cost || 0,
+        distance_traveled: booking.distance_traveled || 0,
         trip: booking.trips ? {
           date: booking.trips.date,
           time_slot: booking.trips.time_slots || { start_time: 'Not specified' },
           route: booking.trips.route || []
-        } : undefined
+        } : undefined,
+        pickup_stop: booking.pickup_stop || undefined,
+        dropoff_stop: booking.dropoff_stop || undefined,
+        user: booking.users || undefined
       }));
       
       setBookings(processedBookings);
@@ -147,11 +152,15 @@ export function useBookings() {
       
       return (data || []).map(booking => ({
         ...booking,
+        cost: booking.cost || 0,
+        distance_traveled: booking.distance_traveled || 0,
         trip: booking.trips ? {
           date: booking.trips.date,
           time_slot: booking.trips.time_slots || { start_time: 'Not specified' },
           route: booking.trips.route || []
-        } : undefined
+        } : undefined,
+        pickup_stop: booking.pickup_stop || undefined,
+        dropoff_stop: booking.dropoff_stop || undefined
       }));
     } catch (error) {
       console.error('Error fetching user bookings:', error);

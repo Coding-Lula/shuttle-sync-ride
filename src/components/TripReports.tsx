@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -161,7 +160,10 @@ const TripReports = () => {
       const { data: trips, error } = await supabase
         .from('trips')
         .select(`
-          time_slot,
+          time_slot_id,
+          time_slots:time_slot_id (
+            start_time
+          ),
           bookings:bookings(
             cost,
             payment_method,
@@ -174,7 +176,7 @@ const TripReports = () => {
       const timeSlotStats: Record<string, TimeSlotReport> = {};
 
       (trips || []).forEach(trip => {
-        const timeSlot = trip.time_slot;
+        const timeSlot = trip.time_slots?.start_time || 'Unknown';
         
         if (!timeSlotStats[timeSlot]) {
           timeSlotStats[timeSlot] = {
