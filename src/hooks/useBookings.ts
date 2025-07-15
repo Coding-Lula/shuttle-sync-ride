@@ -74,11 +74,11 @@ export function useBookings() {
             name,
             email
           ),
-          pickup_stops:pickup_stop_id (
+          stops!pickup_stop_id (
             name,
             distance_km
           ),
-          dropoff_stops:dropoff_stop_id (
+          stops!dropoff_stop_id (
             name,
             distance_km
           ),
@@ -104,8 +104,8 @@ export function useBookings() {
           time_slot: booking.trips.time_slots || { start_time: 'Not specified' },
           route: booking.trips.route || []
         } : undefined,
-        pickup_stop: booking.pickup_stops || undefined,
-        dropoff_stop: booking.dropoff_stops || undefined,
+        pickup_stop: booking.stops && Array.isArray(booking.stops) ? booking.stops[0] : booking.stops,
+        dropoff_stop: booking.stops && Array.isArray(booking.stops) ? booking.stops[1] : undefined,
         user: booking.users || undefined
       }));
       
@@ -128,11 +128,11 @@ export function useBookings() {
         .from('bookings')
         .select(`
           *,
-          pickup_stops:pickup_stop_id (
+          stops!pickup_stop_id (
             name,
             distance_km
           ),
-          dropoff_stops:dropoff_stop_id (
+          stops!dropoff_stop_id (
             name,
             distance_km
           ),
@@ -159,8 +159,8 @@ export function useBookings() {
           time_slot: booking.trips.time_slots || { start_time: 'Not specified' },
           route: booking.trips.route || []
         } : undefined,
-        pickup_stop: booking.pickup_stops || undefined,
-        dropoff_stop: booking.dropoff_stops || undefined
+        pickup_stop: booking.stops && Array.isArray(booking.stops) ? booking.stops[0] : booking.stops,
+        dropoff_stop: booking.stops && Array.isArray(booking.stops) ? booking.stops[1] : undefined
       }));
     } catch (error) {
       console.error('Error fetching user bookings:', error);
@@ -200,10 +200,10 @@ export function useBookings() {
             user_id,
             cancelled,
             picked_up,
-            pickup_stops:pickup_stop_id (
+            stops!pickup_stop_id (
               name
             ),
-            dropoff_stops:dropoff_stop_id (
+            stops!dropoff_stop_id (
               name
             ),
             users:user_id (
@@ -219,8 +219,8 @@ export function useBookings() {
         const processedBookings = (bookings || []).map(booking => ({
           id: booking.id,
           user_id: booking.user_id,
-          pickup: booking.pickup_stops?.name || 'Not specified',
-          destination: booking.dropoff_stops?.name || 'Not specified',
+          pickup: booking.stops && Array.isArray(booking.stops) ? booking.stops[0]?.name || 'Not specified' : booking.stops?.name || 'Not specified',
+          destination: booking.stops && Array.isArray(booking.stops) ? booking.stops[1]?.name || 'Not specified' : 'Not specified',
           pickedUp: booking.picked_up || false,
           user: {
             name: booking.users?.name || 'Unknown',
