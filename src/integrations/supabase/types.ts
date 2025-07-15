@@ -54,10 +54,17 @@ export type Database = {
           cancelled: boolean | null
           cost: number | null
           created_at: string | null
+          date: string
           distance_traveled: number | null
+          dropoff_stop_id: string | null
           id: string
           payment_method: string | null
-          stop_id: string | null
+          picked_up: boolean | null
+          pickup_stop_id: string | null
+          sequence_number: number | null
+          status: string
+          student_type: string
+          time_slot_id: string | null
           trip_id: string | null
           user_id: string | null
         }
@@ -65,10 +72,17 @@ export type Database = {
           cancelled?: boolean | null
           cost?: number | null
           created_at?: string | null
+          date?: string
           distance_traveled?: number | null
+          dropoff_stop_id?: string | null
           id?: string
           payment_method?: string | null
-          stop_id?: string | null
+          picked_up?: boolean | null
+          pickup_stop_id?: string | null
+          sequence_number?: number | null
+          status?: string
+          student_type: string
+          time_slot_id?: string | null
           trip_id?: string | null
           user_id?: string | null
         }
@@ -76,20 +90,48 @@ export type Database = {
           cancelled?: boolean | null
           cost?: number | null
           created_at?: string | null
+          date?: string
           distance_traveled?: number | null
+          dropoff_stop_id?: string | null
           id?: string
           payment_method?: string | null
-          stop_id?: string | null
+          picked_up?: boolean | null
+          pickup_stop_id?: string | null
+          sequence_number?: number | null
+          status?: string
+          student_type?: string
+          time_slot_id?: string | null
           trip_id?: string | null
           user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "bookings_stop_id_fkey"
-            columns: ["stop_id"]
+            foreignKeyName: "bookings_dropoff_stop_id_fkey"
+            columns: ["dropoff_stop_id"]
             isOneToOne: false
             referencedRelation: "stops"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_stop_id_fkey"
+            columns: ["pickup_stop_id"]
+            isOneToOne: false
+            referencedRelation: "stops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_time_slot_id_fkey"
+            columns: ["time_slot_id"]
+            isOneToOne: false
+            referencedRelation: "time_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "driver_trip_view"
+            referencedColumns: ["trip_id"]
           },
           {
             foreignKeyName: "bookings_trip_id_fkey"
@@ -131,6 +173,13 @@ export type Database = {
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "check_ins_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "student_bookings_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       credit_transactions: {
@@ -167,6 +216,13 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_credit_transactions_booking"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "student_bookings_view"
             referencedColumns: ["id"]
           },
           {
@@ -258,6 +314,77 @@ export type Database = {
         }
         Relationships: []
       }
+      time_slots: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_free_for_community: boolean
+          is_free_for_yoyl: boolean
+          start_time: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_free_for_community?: boolean
+          is_free_for_yoyl?: boolean
+          start_time: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_free_for_community?: boolean
+          is_free_for_yoyl?: boolean
+          start_time?: string
+        }
+        Relationships: []
+      }
+      trip_bookings: {
+        Row: {
+          booking_id: string
+          sequence_number: number
+          trip_id: string
+        }
+        Insert: {
+          booking_id: string
+          sequence_number: number
+          trip_id: string
+        }
+        Update: {
+          booking_id?: string
+          sequence_number?: number
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_bookings_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_bookings_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "student_bookings_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_bookings_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "driver_trip_view"
+            referencedColumns: ["trip_id"]
+          },
+          {
+            foreignKeyName: "trip_bookings_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trips: {
         Row: {
           created_at: string | null
@@ -265,7 +392,7 @@ export type Database = {
           driver_id: string | null
           id: string
           route: string[] | null
-          time_slot: string
+          time_slot_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -273,7 +400,7 @@ export type Database = {
           driver_id?: string | null
           id?: string
           route?: string[] | null
-          time_slot: string
+          time_slot_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -281,7 +408,7 @@ export type Database = {
           driver_id?: string | null
           id?: string
           route?: string[] | null
-          time_slot?: string
+          time_slot_id?: string | null
         }
         Relationships: [
           {
@@ -289,6 +416,13 @@ export type Database = {
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trips_time_slot_id_fkey"
+            columns: ["time_slot_id"]
+            isOneToOne: false
+            referencedRelation: "time_slots"
             referencedColumns: ["id"]
           },
         ]
@@ -325,7 +459,38 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      driver_trip_view: {
+        Row: {
+          bookings: Json | null
+          date: string | null
+          driver_name: string | null
+          start_time: string | null
+          trip_id: string | null
+        }
+        Relationships: []
+      }
+      student_bookings_view: {
+        Row: {
+          cost: number | null
+          date: string | null
+          distance_traveled: number | null
+          dropoff_name: string | null
+          id: string | null
+          pickup_name: string | null
+          start_time: string | null
+          status: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       create_user_account: {
