@@ -40,7 +40,7 @@ const NextRoute = () => {
             users:driver_id (
               name
             ),
-            bookings:bookings(count)
+            bookings!bookings_trip_id_fkey(count)
           `)
           .eq('date', today)
           .order('time_slot_id');
@@ -71,7 +71,7 @@ const NextRoute = () => {
               users:driver_id (
                 name
               ),
-              bookings:bookings(count)
+              bookings!bookings_trip_id_fkey(count)
             `)
             .eq('date', tomorrowStr)
             .order('time_slot_id')
