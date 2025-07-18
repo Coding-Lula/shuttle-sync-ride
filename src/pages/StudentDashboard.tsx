@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bus, Calendar, CreditCard, LogOut } from 'lucide-react';
+import { Bus, Calendar, LogOut } from 'lucide-react';
 import UserBookings from '@/components/UserBookings';
 import NextRoute from '@/components/NextRoute';
 
@@ -50,7 +50,7 @@ const StudentDashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={handleBookShuttle}>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -71,18 +71,6 @@ const StudentDashboard = () => {
               </CardTitle>
               <CardDescription>
                 View your booking history
-              </CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <CreditCard className="w-5 h-5 mr-2 text-purple-600" />
-                Credits
-              </CardTitle>
-              <CardDescription>
-                Check your credit balance
               </CardDescription>
             </CardHeader>
           </Card>
@@ -118,16 +106,8 @@ const StudentDashboard = () => {
                 <p className="text-gray-900 capitalize">{user.studentType || 'Not specified'}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Start Location</label>
-                <p className="text-gray-900">{user.startLocation || 'Not specified'}</p>
-              </div>
-              <div>
                 <label className="text-sm font-medium text-gray-500">Role</label>
                 <p className="text-gray-900 capitalize">{user.role || 'Not specified'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">User ID</label>
-                <p className="text-gray-900 text-xs">{user.id}</p>
               </div>
             </div>
           </CardContent>
