@@ -22,6 +22,10 @@ const StudentDashboard = () => {
     navigate('/student/book');
   };
 
+  const handleMyBookings = () => {
+    navigate('/student/bookings');
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -59,14 +63,14 @@ const StudentDashboard = () => {
             </CardHeader>
           </Card>
 
-          <Card>
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={handleMyBookings}>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Calendar className="w-5 h-5 mr-2 text-green-600" />
                 My Bookings
               </CardTitle>
               <CardDescription>
-                View your upcoming rides
+                View your booking history
               </CardDescription>
             </CardHeader>
           </Card>
@@ -89,7 +93,7 @@ const StudentDashboard = () => {
           <NextRoute />
         </div>
 
-        {/* User Bookings */}
+        {/* User Bookings - Only upcoming ones */}
         <div className="mb-8">
           <UserBookings />
         </div>

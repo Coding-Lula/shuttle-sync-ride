@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, MapPin, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar, MapPin, Clock, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -34,14 +35,16 @@ const UserBookings = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUserBookings = async () => {
+    const fetchUpcomingBookings = async () => {
       if (!user?.id) {
         setIsLoading(false);
         return;
       }
 
       try {
-        console.log('Fetching bookings for user:', user.id);
+        console.log('Fetching upcoming bookings for user:', user.id);
+        
+        const today = new Date().toISOString().split('T')[0];
         
         const { data, error } = await supabase
           .from('bookings')
@@ -66,19 +69,21 @@ const UserBookings = () => {
           `)
           .eq('user_id', user.id)
           .eq('cancelled', false)
-          .order('date', { ascending: true });
+          .gte('date', today)
+          .order('date', { ascending: true })
+          .limit(3);
 
         if (error) {
-          console.error('Error fetching user bookings:', error);
+          console.error('Error fetching upcoming bookings:', error);
           toast({
             title: "Error",
-            description: "Failed to fetch your bookings",
+            description: "Failed to fetch your upcoming bookings",
             variant: "destructive",
           });
           return;
         }
 
-        console.log('Raw booking data:', data);
+        console.log('Raw upcoming booking data:', data);
 
         const processedBookings = (data || []).map(booking => {
           console.log('Processing booking:', booking);
@@ -94,10 +99,10 @@ const UserBookings = () => {
           };
         });
 
-        console.log('Processed bookings:', processedBookings);
+        console.log('Processed upcoming bookings:', processedBookings);
         setUserBookings(processedBookings);
       } catch (error) {
-        console.error('Unexpected error fetching bookings:', error);
+        console.error('Unexpected error fetching upcoming bookings:', error);
         toast({
           title: "Error",
           description: "An unexpected error occurred",
@@ -108,14 +113,53 @@ const UserBookings = () => {
       }
     };
 
-    fetchUserBookings();
+    fetchUpcomingBookings();
   }, [user?.id, toast]);
+
+  const handleCancelBooking = async (bookingId: string) => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ cancelled: true, status: 'cancelled' })
+        .eq('id', bookingId);
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to cancel booking",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Success",
+        description: "Booking cancelled successfully",
+      });
+
+      // Remove the cancelled booking from the list
+      setUserBookings(prev => prev.filter(booking => booking.id !== bookingId));
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const canCancelBooking = (bookingDate: string) => {
+    const today = new Date();
+    const booking = new Date(bookingDate);
+    return booking > today && booking.getTime() - today.getTime() > 24 * 60 * 60 * 1000; // 24 hours notice
+  };
 
   if (isLoading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>My Bookings</CardTitle>
+          <CardTitle>Upcoming Bookings</CardTitle>
           <CardDescription>Loading your upcoming rides...</CardDescription>
         </CardHeader>
         <CardContent>
@@ -129,8 +173,8 @@ const UserBookings = () => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>My Bookings</CardTitle>
-          <CardDescription>Your upcoming shuttle rides</CardDescription>
+          <CardTitle>Upcoming Bookings</CardTitle>
+          <CardDescription>Your next shuttle rides</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-gray-500">
@@ -146,15 +190,15 @@ const UserBookings = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>My Bookings</CardTitle>
-        <CardDescription>Your upcoming shuttle rides</CardDescription>
+        <CardTitle>Upcoming Bookings</CardTitle>
+        <CardDescription>Your next shuttle rides (showing max 3)</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           {userBookings.map((booking) => (
             <div key={booking.id} className="border rounded-lg p-4 space-y-2">
               <div className="flex justify-between items-start">
-                <div className="space-y-1">
+                <div className="space-y-1 flex-1">
                   <div className="flex items-center space-x-2">
                     <Calendar className="w-4 h-4 text-blue-600" />
                     <span className="font-medium">{booking.date}</span>
@@ -182,9 +226,22 @@ const UserBookings = () => {
                     </div>
                   )}
                 </div>
-                <Badge variant={booking.status === 'confirmed' ? 'default' : 'secondary'}>
-                  {booking.status}
-                </Badge>
+                <div className="flex items-center space-x-2">
+                  <Badge variant={booking.status === 'confirmed' ? 'default' : 'secondary'}>
+                    {booking.status}
+                  </Badge>
+                  {booking.status === 'confirmed' && canCancelBooking(booking.date) && (
+                    <Button
+                      onClick={() => handleCancelBooking(booking.id)}
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <X className="w-3 h-3 mr-1" />
+                      Cancel
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           ))}

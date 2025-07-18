@@ -13,6 +13,7 @@ import DriverDashboard from "./pages/DriverDashboard";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import SeniorDashboard from "./pages/SeniorDashboard";
 import BookingPage from "./pages/BookingPage";
+import MyBookingsPage from "./pages/MyBookingsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <BookingPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/student/bookings" 
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <MyBookingsPage />
                 </ProtectedRoute>
               } 
             />
