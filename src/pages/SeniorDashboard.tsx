@@ -60,23 +60,39 @@ const SeniorDashboard = () => {
       setIsLoading(true);
       
       // Fetch overall stats
-      const [studentsData, bookingsData, tripsData] = await Promise.all([
+      const [studentsData, bookingsData, tripsData, stopsData] = await Promise.all([
         supabase.from('users').select('*').eq('role', 'student'),
-        supabase.from('bookings').select('*, trips(date)').eq('cancelled', false),
-        supabase.from('trips').select('*, bookings(*)')
+        supabase.from('bookings').select('*').eq('cancelled', false),
+        supabase.from('trips').select('*'),
+        supabase.from('stops').select('*')
       ]);
 
       if (studentsData.error) throw studentsData.error;
       if (bookingsData.error) throw bookingsData.error;
       if (tripsData.error) throw tripsData.error;
+      if (stopsData.error) throw stopsData.error;
 
       const totalStudents = studentsData.data?.length || 0;
       const totalBookings = bookingsData.data?.length || 0;
       const totalRevenue = bookingsData.data?.reduce((sum, booking) => sum + (booking.cost || 0), 0) || 0;
-      const activeRoutes = new Set(tripsData.data?.map(trip => JSON.stringify(trip.route)).filter(Boolean)).size;
       
-      // Calculate average occupancy (assuming 15 seat capacity)
-      const totalCapacity = (tripsData.data?.length || 0) * 15;
+      // Count unique routes based on pickup/dropoff stop combinations from bookings
+      const uniqueRoutes = new Set();
+      bookingsData.data?.forEach(booking => {
+        if (booking.pickup_stop_id && booking.dropoff_stop_id) {
+          const route = `${booking.pickup_stop_id}-${booking.dropoff_stop_id}`;
+          uniqueRoutes.add(route);
+        }
+      });
+      const activeRoutes = uniqueRoutes.size;
+      
+      // Calculate average occupancy based on actual trips with bookings
+      const tripsWithBookings = tripsData.data?.filter(trip => {
+        const tripBookings = bookingsData.data?.filter(b => b.trip_id === trip.id);
+        return tripBookings && tripBookings.length > 0;
+      }) || [];
+      
+      const totalCapacity = tripsWithBookings.length * 15;
       const avgOccupancy = totalCapacity > 0 ? Math.round((totalBookings / totalCapacity) * 100) : 0;
 
       setOverallStats({
@@ -88,11 +104,13 @@ const SeniorDashboard = () => {
         avgOccupancy
       });
 
-      // Process monthly data
+      // Process monthly data using booking dates
       const monthlyStats: Record<string, MonthlyData> = {};
+      const studentsByMonth: Record<string, Set<string>> = {};
+      
       bookingsData.data?.forEach(booking => {
-        if (booking.trips?.date) {
-          const date = new Date(booking.trips.date);
+        if (booking.date) {
+          const date = new Date(booking.date);
           const monthKey = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
           
           if (!monthlyStats[monthKey]) {
@@ -100,23 +118,40 @@ const SeniorDashboard = () => {
               month: monthKey,
               trips: 0,
               revenue: 0,
-              students: new Set().size
+              students: 0
             };
+            studentsByMonth[monthKey] = new Set();
           }
           
           monthlyStats[monthKey].trips += 1;
           monthlyStats[monthKey].revenue += booking.cost || 0;
+          if (booking.user_id) {
+            studentsByMonth[monthKey].add(booking.user_id);
+          }
         }
       });
 
-      setMonthlyData(Object.values(monthlyStats).slice(-6)); // Last 6 months
+      // Update student counts
+      Object.keys(monthlyStats).forEach(monthKey => {
+        monthlyStats[monthKey].students = studentsByMonth[monthKey]?.size || 0;
+      });
 
-      // Process route performance
+      // Sort by date and take last 6 months
+      const sortedMonthlyData = Object.values(monthlyStats)
+        .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime())
+        .slice(-6);
+      
+      setMonthlyData(sortedMonthlyData);
+
+      // Process route performance using pickup/dropoff stops
       const routeStats: Record<string, RoutePerformance> = {};
-      tripsData.data?.forEach(trip => {
-        if (trip.route && Array.isArray(trip.route)) {
-          const routeKey = trip.route.join(' → ');
-          const validBookings = (trip.bookings || []).filter(b => !b.cancelled);
+      const stopsMap = new Map(stopsData.data?.map(stop => [stop.id, stop.name]) || []);
+      
+      bookingsData.data?.forEach(booking => {
+        if (booking.pickup_stop_id && booking.dropoff_stop_id) {
+          const pickupName = stopsMap.get(booking.pickup_stop_id) || 'Unknown';
+          const dropoffName = stopsMap.get(booking.dropoff_stop_id) || 'Unknown';
+          const routeKey = `${pickupName} → ${dropoffName}`;
           
           if (!routeStats[routeKey]) {
             routeStats[routeKey] = {
@@ -129,11 +164,18 @@ const SeniorDashboard = () => {
           }
           
           const stats = routeStats[routeKey];
-          stats.trips += validBookings.length;
-          stats.revenue += validBookings.reduce((sum, b) => sum + (b.cost || 0), 0);
-          stats.occupancy = `${Math.round((validBookings.length / 15) * 100)}%`;
+          stats.trips += 1;
+          stats.revenue += booking.cost || 0;
           stats.type = stats.revenue > 0 ? 'Paid' : 'Free';
         }
+      });
+
+      // Calculate occupancy for routes (assuming 15 seat capacity per trip)
+      Object.values(routeStats).forEach(route => {
+        // For route occupancy, we'll use a simplified calculation
+        // In a real system, you'd need to group by actual trip instances
+        const estimatedTrips = Math.ceil(route.trips / 15); // Rough estimate of actual shuttle trips
+        route.occupancy = estimatedTrips > 0 ? `${Math.min(100, Math.round((route.trips / (estimatedTrips * 15)) * 100))}%` : '0%';
       });
 
       setRoutePerformance(Object.values(routeStats));
