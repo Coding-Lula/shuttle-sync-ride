@@ -6,10 +6,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LogOut, Users, TrendingUp, Calendar, BarChart3 } from 'lucide-react';
 import TripReports from '../components/TripReports';
-import ShuttleStopsManager from '../components/ShuttleStopsManager';
 import StudentManagement from '../components/StudentManagement';
 import RateManagement from '../components/RateManagement';
-import ShuttleStopsDisplay from '../components/ShuttleStopsDisplay';
+import ManageStops from '../components/ManageStops';
 import { useStudents } from '../hooks/useStudents';
 import { useRates } from '../hooks/useRates';
 
@@ -27,10 +26,9 @@ const ManagerDashboard = () => {
   // Calculate statistics from real data
   const statsData = {
     totalStudents: students.length,
-    totalTrips: 1247, // This would come from trips data
-    activeBookings: 89, // This would come from bookings data
-    totalRevenue: 1580, // This would be calculated from completed trips
-    unpaidAmount: 340 // This would come from billing data
+    totalTrips: 0, // Will be populated from real data when implemented
+    activeBookings: 0, // Will be populated from real data when implemented
+    totalRevenue: 0, // Will be populated from real data when implemented
   };
 
   return (
@@ -57,7 +55,7 @@ const ManagerDashboard = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center space-x-2">
@@ -106,17 +104,6 @@ const ManagerDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <TrendingUp className="w-5 h-5 text-red-600" />
-                <div>
-                  <p className="text-2xl font-bold">R{statsData.unpaidAmount}</p>
-                  <p className="text-sm text-gray-600">Unpaid Amount (ZAR)</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Current Rate Display */}
@@ -137,13 +124,11 @@ const ManagerDashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="students" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="students">Students</TabsTrigger>
             <TabsTrigger value="rates">Trip Rates</TabsTrigger>
-            <TabsTrigger value="stops-view">Shuttle Stops</TabsTrigger>
+            <TabsTrigger value="stops">Manage Stops</TabsTrigger>
             <TabsTrigger value="reports">Trip Reports</TabsTrigger>
-            <TabsTrigger value="billing">Billing</TabsTrigger>
-            <TabsTrigger value="stops-manage">Manage Stops</TabsTrigger>
           </TabsList>
 
           <TabsContent value="students">
@@ -154,24 +139,12 @@ const ManagerDashboard = () => {
             <RateManagement />
           </TabsContent>
 
-          <TabsContent value="stops-view">
-            <ShuttleStopsDisplay />
+          <TabsContent value="stops">
+            <ManageStops />
           </TabsContent>
 
           <TabsContent value="reports">
             <TripReports />
-          </TabsContent>
-
-          <TabsContent value="billing">
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-center text-gray-500">Billing management coming soon...</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="stops-manage">
-            <ShuttleStopsManager />
           </TabsContent>
         </Tabs>
       </div>

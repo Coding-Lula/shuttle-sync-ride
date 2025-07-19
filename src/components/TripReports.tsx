@@ -164,7 +164,7 @@ const TripReports = () => {
           time_slots:time_slot_id (
             start_time
           ),
-          bookings:bookings(
+          bookings!bookings_trip_id_fkey(
             cost,
             payment_method,
             cancelled
@@ -215,7 +215,7 @@ const TripReports = () => {
         .from('trips')
         .select(`
           date,
-          bookings:bookings(
+          bookings!bookings_trip_id_fkey(
             cost,
             distance_traveled,
             cancelled
