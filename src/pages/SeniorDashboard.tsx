@@ -289,7 +289,7 @@ const SeniorDashboard = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Key Performance Indicators */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center space-x-2">
@@ -326,29 +326,6 @@ const SeniorDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <TrendingUp className="w-5 h-5 text-amber-600" />
-                <div>
-                  <p className="text-2xl font-bold">{overallStats.monthlyGrowth}%</p>
-                  <p className="text-sm text-gray-600">Monthly Growth</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <BarChart3 className="w-5 h-5 text-red-600" />
-                <div>
-                  <p className="text-2xl font-bold">{overallStats.activeRoutes}</p>
-                  <p className="text-sm text-gray-600">Active Routes</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
           <Card>
             <CardContent className="p-6">
