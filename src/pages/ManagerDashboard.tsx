@@ -79,7 +79,7 @@ const ManagerDashboard = () => {
               </div>
             </CardContent>
           </Card>
-
+         {/* This is a single-line comment 
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center space-x-2">
@@ -91,7 +91,7 @@ const ManagerDashboard = () => {
               </div>
             </CardContent>
           </Card>
-
+                  */}
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center space-x-2">

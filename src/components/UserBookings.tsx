@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 interface UserBooking {
   id: string;
   date: string;
-  cost: number;
+  //cost: number;
   distance_traveled: number;
   status: string;
   pickup_stop?: {
@@ -90,7 +90,7 @@ const UserBookings = () => {
           return {
             id: booking.id,
             date: booking.date,
-            cost: booking.cost || 0,
+          //cost: booking.cost || 0,
             distance_traveled: booking.distance_traveled || 0,
             status: booking.status || 'confirmed',
             pickup_stop: Array.isArray(booking.pickup_stop) ? booking.pickup_stop[0] : booking.pickup_stop,
@@ -220,11 +220,11 @@ const UserBookings = () => {
                       Distance: {booking.distance_traveled} km
                     </div>
                   )}
-                  {booking.cost > 0 && (
+                  {/*{booking.cost > 0 && (
                     <div className="text-sm text-gray-600">
                       Cost: R{booking.cost.toFixed(2)}
                     </div>
-                  )}
+                  )} */}
                 </div>
                 <div className="flex items-center space-x-2">
                   <Badge variant={booking.status === 'confirmed' ? 'default' : 'secondary'}>

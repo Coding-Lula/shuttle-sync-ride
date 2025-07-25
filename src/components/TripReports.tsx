@@ -200,7 +200,8 @@ const TripReports = () => {
         stats.type = freeBookings > paidBookings ? 'free' : 'paid';
         
         // Calculate occupancy (assuming 15 seat capacity)
-        stats.avgOccupancy = `${Math.round((validBookings.length / 15) * 100)}%`;
+        //stats.avgOccupancy = `${Math.round((validBookings.length / 15) * 100)}%`;
+        stats.avgOccupancy =`${validBookings.length}/15`;
       });
 
       setTimeSlotReports(Object.values(timeSlotStats));
