@@ -44,7 +44,9 @@ const UserBookings = () => {
       try {
         console.log('Fetching upcoming bookings for user:', user.id);
         
-        const today = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        const currentTime = now.toTimeString().split(' ')[0]; // HH:MM:SS format
         
         const { data, error } = await supabase
           .from('bookings')
@@ -69,7 +71,7 @@ const UserBookings = () => {
           `)
           .eq('user_id', user.id)
           .eq('cancelled', false)
-          .gte('date', today)
+          .or(`date.gt.${today},and(date.eq.${today})`)
           .order('date', { ascending: true })
           .limit(3);
 
@@ -149,10 +151,15 @@ const UserBookings = () => {
     }
   };
 
-  const canCancelBooking = (bookingDate: string) => {
-    const today = new Date();
-    const booking = new Date(bookingDate);
-    return booking > today && booking.getTime() - today.getTime() > 24 * 60 * 60 * 1000; // 24 hours notice
+  const canCancelBooking = (bookingDate: string, pickupTime?: string) => {
+    if (!pickupTime) return false;
+    
+    const now = new Date();
+    const bookingDateTime = new Date(`${bookingDate}T${pickupTime}`);
+    const timeDifferenceMs = bookingDateTime.getTime() - now.getTime();
+    
+    // Can cancel if booking is at least 15 minutes in the future
+    return timeDifferenceMs > 15 * 60 * 1000; // 15 minutes in milliseconds
   };
 
   if (isLoading) {
@@ -230,7 +237,7 @@ const UserBookings = () => {
                   <Badge variant={booking.status === 'confirmed' ? 'default' : 'secondary'}>
                     {booking.status}
                   </Badge>
-                  {booking.status === 'confirmed' && canCancelBooking(booking.date) && (
+                  {booking.status === 'confirmed' && canCancelBooking(booking.date, booking.trip?.time_slot?.start_time) && (
                     <Button
                       onClick={() => handleCancelBooking(booking.id)}
                       variant="outline"

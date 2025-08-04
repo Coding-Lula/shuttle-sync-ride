@@ -141,10 +141,15 @@ const MyBookingsPage = () => {
     }
   };
 
-  const canCancelBooking = (bookingDate: string) => {
-    const today = new Date();
-    const booking = new Date(bookingDate);
-    return booking > today && booking.getTime() - today.getTime() > 24 * 60 * 60 * 1000; // 24 hours notice
+  const canCancelBooking = (bookingDate: string, pickupTime?: string) => {
+    if (!pickupTime) return false;
+    
+    const now = new Date();
+    const bookingDateTime = new Date(`${bookingDate}T${pickupTime}`);
+    const timeDifferenceMs = bookingDateTime.getTime() - now.getTime();
+    
+    // Can cancel if booking is at least 15 minutes in the future
+    return timeDifferenceMs > 15 * 60 * 1000; // 15 minutes in milliseconds
   };
 
   if (isLoading) {
@@ -235,7 +240,7 @@ const MyBookingsPage = () => {
                         <Badge variant={booking.status === 'confirmed' ? 'default' : 'secondary'}>
                           {booking.status}
                         </Badge>
-                        {booking.status === 'confirmed' && canCancelBooking(booking.date) && (
+                        {booking.status === 'confirmed' && canCancelBooking(booking.date, booking.trip?.time_slot?.start_time) && (
                           <Button
                             onClick={() => handleCancelBooking(booking.id)}
                             variant="outline"
