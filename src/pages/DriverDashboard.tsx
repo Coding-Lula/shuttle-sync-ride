@@ -8,25 +8,71 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Bus, Users, CheckCircle, LogOut } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Bus, Users, CheckCircle, LogOut, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
 
 const DriverDashboard = () => {
   const { user, logout } = useAuth();
   const { fetchTodaysTripsWithBookings } = useBookings();
-  const [todaysTrips, setTodaysTrips] = useState<any[]>([]);
+  const [selectedTrips, setSelectedTrips] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const loadTodaysTrips = async () => {
-      const trips = await fetchTodaysTripsWithBookings();
-      setTodaysTrips(trips);
-      setIsLoading(false);
-    };
+  const fetchTripsForDate = async (date: Date) => {
+    setIsLoading(true);
+    try {
+      const dateString = format(date, 'yyyy-MM-dd');
+      
+      const { data: trips, error } = await supabase
+        .from('trips')
+        .select(`
+          *,
+          time_slot:time_slots(*),
+          bookings:bookings(
+            *,
+            user:users(*),
+            pickup_stop:pickup_stop_id(*),
+            dropoff_stop:dropoff_stop_id(*)
+          )
+        `)
+        .eq('date', dateString)
+        .eq('driver_id', user?.id);
 
-    loadTodaysTrips();
-  }, [fetchTodaysTripsWithBookings]);
+      if (error) throw error;
+
+      // Transform the data to match the expected format
+      const transformedTrips = trips.map(trip => ({
+        ...trip,
+        bookings: trip.bookings?.map((booking: any) => ({
+          ...booking,
+          pickup: booking.pickup_stop?.name || 'Unknown pickup',
+          destination: booking.dropoff_stop?.name || 'Unknown destination',
+          pickedUp: booking.picked_up
+        })) || []
+      }));
+
+      setSelectedTrips(transformedTrips);
+    } catch (error) {
+      console.error('Error fetching trips:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch trips for selected date",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchTripsForDate(selectedDate);
+    }
+  }, [selectedDate, user?.id]);
 
   const handleLogout = async () => {
     await logout();
@@ -43,8 +89,7 @@ const DriverDashboard = () => {
       if (error) throw error;
 
       // Refresh the trips data
-      const trips = await fetchTodaysTripsWithBookings();
-      setTodaysTrips(trips);
+      await fetchTripsForDate(selectedDate);
 
       toast({
         title: "Success",
@@ -85,19 +130,40 @@ const DriverDashboard = () => {
           </Button>
         </div>
 
-        {/* Today's Trips */}
+        {/* Date Selection and Trips */}
         <div className="space-y-6">
-          <h2 className="text-2xl font-bold text-gray-900">Today's Trips</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900">Your Trips</h2>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-[240px] justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {format(selectedDate, 'PPP')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
           
-          {todaysTrips.length === 0 ? (
+          {selectedTrips.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8">
                 <Bus className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p className="text-gray-500">No trips scheduled for today</p>
+                <p className="text-gray-500">No trips scheduled for {format(selectedDate, 'MMMM d, yyyy')}</p>
               </CardContent>
             </Card>
           ) : (
-            todaysTrips.map((trip) => (
+            selectedTrips.map((trip) => (
               <Card key={trip.id}>
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
