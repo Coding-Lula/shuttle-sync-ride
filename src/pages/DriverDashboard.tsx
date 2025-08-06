@@ -32,7 +32,7 @@ const DriverDashboard = () => {
         .select(`
           *,
           time_slot:time_slots(*),
-          bookings:bookings(
+          bookings!bookings_trip_id_fkey(
             *,
             user:users(*),
             pickup_stop:pickup_stop_id(*),
