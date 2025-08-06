@@ -40,7 +40,7 @@ const DriverDashboard = () => {
           )
         `)
         .eq('date', dateString)
-        .eq('driver_id', user?.id);
+        .or(`driver_id.eq.${user?.id},driver_id.is.null`);
 
       if (error) throw error;
 
