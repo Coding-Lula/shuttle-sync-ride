@@ -231,7 +231,9 @@ const BookingPage = () => {
       const groupedBookings: Record<string, BookingItem[]> = {};
       
       bookings.forEach(booking => {
-        const dateStr = booking.date.toISOString().split('T')[0];
+        const dateStr = booking.date.getFullYear() + '-' + 
+          String(booking.date.getMonth() + 1).padStart(2, '0') + '-' + 
+          String(booking.date.getDate()).padStart(2, '0');
         const key = `${dateStr}_${booking.timeSlotId}`;
         
         if (!groupedBookings[key]) {
@@ -268,7 +270,9 @@ const BookingPage = () => {
             pickup_stop_id: booking.pickupStopId,
             dropoff_stop_id: booking.dropoffStopId,
             time_slot_id: booking.timeSlotId,
-            date: booking.date.toISOString().split('T')[0],
+            date: booking.date.getFullYear() + '-' + 
+              String(booking.date.getMonth() + 1).padStart(2, '0') + '-' + 
+              String(booking.date.getDate()).padStart(2, '0'),
             distance_traveled: distance,
             cost,
             payment_method: cost === 0 ? 'free' : 'paid',
