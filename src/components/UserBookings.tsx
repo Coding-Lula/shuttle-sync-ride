@@ -73,7 +73,6 @@ const UserBookings = () => {
           .eq('cancelled', false)
           .or(`date.gt.${today},and(date.eq.${today})`)
           .order('date', { ascending: true })
-          .order('trip.time_slot.start_time', { ascending: true })
           .limit(3);
 
         if (error) {
