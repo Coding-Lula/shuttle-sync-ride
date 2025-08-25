@@ -73,6 +73,7 @@ const UserBookings = () => {
           .eq('cancelled', false)
           .or(`date.gt.${today},and(date.eq.${today})`)
           .order('date', { ascending: true })
+          .order('trip.time_slot.start_time', { ascending: true })
           .limit(3);
 
         if (error) {
@@ -99,6 +100,15 @@ const UserBookings = () => {
             dropoff_stop: Array.isArray(booking.dropoff_stop) ? booking.dropoff_stop[0] : booking.dropoff_stop,
             trip: Array.isArray(booking.trip) ? booking.trip[0] : booking.trip
           };
+        }).sort((a, b) => {
+          // Sort by date first
+          const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime();
+          if (dateCompare !== 0) return dateCompare;
+          
+          // If same date, sort by time
+          const timeA = a.trip?.time_slot?.start_time || '00:00:00';
+          const timeB = b.trip?.time_slot?.start_time || '00:00:00';
+          return timeA.localeCompare(timeB);
         });
 
         console.log('Processed upcoming bookings:', processedBookings);
@@ -222,11 +232,6 @@ const UserBookings = () => {
                       {booking.pickup_stop?.name || 'Pickup location'} → {booking.dropoff_stop?.name || 'Dropoff location'}
                     </span>
                   </div>
-                  {booking.distance_traveled > 0 && (
-                    <div className="text-sm text-gray-600">
-                      Distance: {booking.distance_traveled} km
-                    </div>
-                  )}
                   {/*{booking.cost > 0 && (
                     <div className="text-sm text-gray-600">
                       Cost: R{booking.cost.toFixed(2)}
