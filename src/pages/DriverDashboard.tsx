@@ -40,7 +40,8 @@ const DriverDashboard = () => {
           )
         `)
         .eq('date', dateString)
-        .or(`driver_id.eq.${user?.id},driver_id.is.null`);
+        .or(`driver_id.eq.${user?.id},driver_id.is.null`)
+        .order('time_slot_id', { ascending: true });
 
       if (error) throw error;
 
