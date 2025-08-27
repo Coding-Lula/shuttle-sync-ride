@@ -28,6 +28,8 @@ interface TimeSlotReport {
 
 interface DateRangeReport {
   date: string;
+  studentName: string;
+  studentNumber: number;
   totalTrips: number;
   revenue: number;
   avgDistance: number;
@@ -213,13 +215,15 @@ const TripReports = () => {
   const fetchDateRangeReports = async () => {
     try {
       let query = supabase
-        .from('trips')
+        .from('bookings')
         .select(`
           date,
-          bookings!bookings_trip_id_fkey(
-            cost,
-            distance_traveled,
-            cancelled
+          cost,
+          distance_traveled,
+          cancelled,
+          users:user_id (
+            name,
+            student_number
           )
         `);
 
@@ -230,35 +234,33 @@ const TripReports = () => {
         query = query.lte('date', dateTo);
       }
 
-      const { data: trips, error } = await query;
+      const { data: bookings, error } = await query;
 
       if (error) throw error;
 
-      const dateStats: Record<string, DateRangeReport> = {};
+      const reportData: DateRangeReport[] = [];
 
-      (trips || []).forEach(trip => {
-        const date = trip.date;
-        
-        if (!dateStats[date]) {
-          dateStats[date] = {
-            date,
-            totalTrips: 0,
-            revenue: 0,
-            avgDistance: 0
-          };
+      (bookings || []).forEach(booking => {
+        if (!booking.cancelled && booking.users) {
+          const user = booking.users as any;
+          reportData.push({
+            date: booking.date,
+            studentName: user.name || 'Unknown',
+            studentNumber: user.student_number || 0,
+            totalTrips: 1,
+            revenue: booking.cost || 0,
+            avgDistance: booking.distance_traveled || 0
+          });
         }
-
-        const validBookings = (trip.bookings || []).filter(b => !b.cancelled);
-        const stats = dateStats[date];
-        
-        stats.totalTrips += validBookings.length;
-        stats.revenue += validBookings.reduce((sum, b) => sum + (b.cost || 0), 0);
-        
-        const totalDistance = validBookings.reduce((sum, b) => sum + (b.distance_traveled || 0), 0);
-        stats.avgDistance = validBookings.length > 0 ? totalDistance / validBookings.length : 0;
       });
 
-      setDateRangeReports(Object.values(dateStats).sort((a, b) => a.date.localeCompare(b.date)));
+      // Sort by date, then by student name
+      reportData.sort((a, b) => {
+        const dateCompare = a.date.localeCompare(b.date);
+        return dateCompare !== 0 ? dateCompare : a.studentName.localeCompare(b.studentName);
+      });
+
+      setDateRangeReports(reportData);
     } catch (error) {
       console.error('Error fetching date range reports:', error);
     }
@@ -291,9 +293,9 @@ const TripReports = () => {
           break;
           
         case 'dateRange':
-          csvContent = 'Date,Total Trips,Revenue (ZAR),Avg Distance (km)\n';
+          csvContent = 'Date,Student Name,Student Number,Total Trips,Revenue (ZAR),Distance (km)\n';
           dateRangeReports.forEach(day => {
-            csvContent += `${day.date},${day.totalTrips},${day.revenue},${day.avgDistance.toFixed(2)}\n`;
+            csvContent += `${day.date},"${day.studentName}",${day.studentNumber},${day.totalTrips},${day.revenue},${day.avgDistance.toFixed(2)}\n`;
           });
           filename = 'date-range-report.csv';
           break;
@@ -496,16 +498,18 @@ const TripReports = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Date</TableHead>
-                        <TableHead>Total Trips</TableHead>
+                        <TableHead>Student Name</TableHead>
+                        <TableHead>Student Number</TableHead>
                         <TableHead>Revenue (ZAR)</TableHead>
-                        <TableHead>Avg Distance (km)</TableHead>
+                        <TableHead>Distance (km)</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {dateRangeReports.map((day, index) => (
                         <TableRow key={index}>
                           <TableCell className="font-medium">{day.date}</TableCell>
-                          <TableCell>{day.totalTrips}</TableCell>
+                          <TableCell>{day.studentName}</TableCell>
+                          <TableCell>{day.studentNumber}</TableCell>
                           <TableCell>R{day.revenue.toFixed(2)}</TableCell>
                           <TableCell>{day.avgDistance.toFixed(2)}</TableCell>
                         </TableRow>
