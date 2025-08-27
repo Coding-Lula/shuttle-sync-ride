@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,12 +27,9 @@ interface TimeSlotReport {
 }
 
 interface DateRangeReport {
-  date: string;
   studentName: string;
   studentNumber: number;
-  totalTrips: number;
-  revenue: number;
-  avgDistance: number;
+  dates: { [date: string]: { totalTrips: number; totalBilling: number } };
 }
 
 const TripReports = () => {
@@ -219,7 +216,6 @@ const TripReports = () => {
         .select(`
           date,
           cost,
-          distance_traveled,
           cancelled,
           users:user_id (
             name,
@@ -238,29 +234,36 @@ const TripReports = () => {
 
       if (error) throw error;
 
-      const reportData: DateRangeReport[] = [];
+      // Group by student and date
+      const studentDateMap: Record<string, DateRangeReport> = {};
 
       (bookings || []).forEach(booking => {
         if (!booking.cancelled && booking.users) {
           const user = booking.users as any;
-          reportData.push({
-            date: booking.date,
-            studentName: user.name || 'Unknown',
-            studentNumber: user.student_number || 0,
-            totalTrips: 1,
-            revenue: booking.cost || 0,
-            avgDistance: booking.distance_traveled || 0
-          });
+          const studentKey = `${user.name}-${user.student_number || 0}`;
+          
+          if (!studentDateMap[studentKey]) {
+            studentDateMap[studentKey] = {
+              studentName: user.name || 'Unknown',
+              studentNumber: user.student_number || 0,
+              dates: {}
+            };
+          }
+
+          const date = booking.date;
+          if (!studentDateMap[studentKey].dates[date]) {
+            studentDateMap[studentKey].dates[date] = {
+              totalTrips: 0,
+              totalBilling: 0
+            };
+          }
+
+          studentDateMap[studentKey].dates[date].totalTrips += 1;
+          studentDateMap[studentKey].dates[date].totalBilling += booking.cost || 0;
         }
       });
 
-      // Sort by date, then by student name
-      reportData.sort((a, b) => {
-        const dateCompare = a.date.localeCompare(b.date);
-        return dateCompare !== 0 ? dateCompare : a.studentName.localeCompare(b.studentName);
-      });
-
-      setDateRangeReports(reportData);
+      setDateRangeReports(Object.values(studentDateMap));
     } catch (error) {
       console.error('Error fetching date range reports:', error);
     }
@@ -293,9 +296,28 @@ const TripReports = () => {
           break;
           
         case 'dateRange':
-          csvContent = 'Date,Student Name,Student Number,Total Trips,Revenue (ZAR),Distance (km)\n';
-          dateRangeReports.forEach(day => {
-            csvContent += `${day.date},"${day.studentName}",${day.studentNumber},${day.totalTrips},${day.revenue},${day.avgDistance.toFixed(2)}\n`;
+          csvContent = 'Student Name,Student Number';
+          // Get all unique dates
+          const allDates = new Set<string>();
+          dateRangeReports.forEach(student => {
+            Object.keys(student.dates).forEach(date => allDates.add(date));
+          });
+          const sortedDates = Array.from(allDates).sort();
+          
+          // Add date columns
+          sortedDates.forEach(date => {
+            csvContent += `,${date} Trips,${date} Billing`;
+          });
+          csvContent += '\n';
+          
+          // Add student rows
+          dateRangeReports.forEach(student => {
+            csvContent += `"${student.studentName}",${student.studentNumber}`;
+            sortedDates.forEach(date => {
+              const data = student.dates[date] || { totalTrips: 0, totalBilling: 0 };
+              csvContent += `,${data.totalTrips},${data.totalBilling.toFixed(2)}`;
+            });
+            csvContent += '\n';
           });
           filename = 'date-range-report.csv';
           break;
@@ -497,23 +519,50 @@ const TripReports = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Date</TableHead>
                         <TableHead>Student Name</TableHead>
                         <TableHead>Student Number</TableHead>
-                        <TableHead>Revenue (ZAR)</TableHead>
-                        <TableHead>Distance (km)</TableHead>
+                        {(() => {
+                          // Get all unique dates across all students
+                          const allDates = new Set<string>();
+                          dateRangeReports.forEach(student => {
+                            Object.keys(student.dates).forEach(date => allDates.add(date));
+                          });
+                          const sortedDates = Array.from(allDates).sort();
+                          
+                          return sortedDates.map(date => (
+                            <React.Fragment key={date}>
+                              <TableHead className="text-center border-l">{date} - Trips</TableHead>
+                              <TableHead className="text-center">{date} - Billing (ZAR)</TableHead>
+                            </React.Fragment>
+                          ));
+                        })()}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {dateRangeReports.map((day, index) => (
-                        <TableRow key={index}>
-                          <TableCell className="font-medium">{day.date}</TableCell>
-                          <TableCell>{day.studentName}</TableCell>
-                          <TableCell>{day.studentNumber}</TableCell>
-                          <TableCell>R{day.revenue.toFixed(2)}</TableCell>
-                          <TableCell>{day.avgDistance.toFixed(2)}</TableCell>
-                        </TableRow>
-                      ))}
+                      {dateRangeReports.map((student, index) => {
+                        // Get all unique dates for consistent column structure
+                        const allDates = new Set<string>();
+                        dateRangeReports.forEach(s => {
+                          Object.keys(s.dates).forEach(date => allDates.add(date));
+                        });
+                        const sortedDates = Array.from(allDates).sort();
+                        
+                        return (
+                          <TableRow key={index}>
+                            <TableCell className="font-medium">{student.studentName}</TableCell>
+                            <TableCell>{student.studentNumber}</TableCell>
+                            {sortedDates.map(date => {
+                              const data = student.dates[date] || { totalTrips: 0, totalBilling: 0 };
+                              return (
+                                <React.Fragment key={date}>
+                                  <TableCell className="text-center border-l">{data.totalTrips}</TableCell>
+                                  <TableCell className="text-center">R{data.totalBilling.toFixed(2)}</TableCell>
+                                </React.Fragment>
+                              );
+                            })}
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>

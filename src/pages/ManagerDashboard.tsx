@@ -55,11 +55,11 @@ const ManagerDashboard = () => {
           .select('cost')
           .gte('date', startOfMonth)
           .lte('date', endOfMonth)
-          .neq('cost', null);
+          .not('cost', 'is', null);
 
         if (bookingsError) throw bookingsError;
 
-        const totalRevenue = bookings.reduce((sum, booking) => sum + (booking.cost || 0), 0);
+        const totalRevenue = bookings.reduce((sum, booking) => sum + (parseFloat(String(booking.cost)) || 0), 0);
 
         setStatsData({
           totalStudents: students.length,
