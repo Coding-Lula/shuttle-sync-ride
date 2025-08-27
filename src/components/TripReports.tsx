@@ -256,8 +256,8 @@ const TripReports = () => {
 
           const stats = studentStats[studentKey];
           stats.totalTrips += 1;
-          stats.totalCost += booking.cost || 0;
-          stats.totalDistance += booking.distance_traveled || 0;
+          stats.totalCost += Number(booking.cost) || 0;
+          stats.totalDistance += Number(booking.distance_traveled) || 0;
         }
       });
 
@@ -301,7 +301,7 @@ const TripReports = () => {
         case 'dateRange':
           csvContent = 'Student Name,Student Number,Total Trips,Total Cost (ZAR),Total Distance (km)\n';
           dateRangeReports.forEach(student => {
-            csvContent += `"${student.studentName}",${student.studentNumber},${student.totalTrips},${student.totalCost.toFixed(2)},${student.totalDistance.toFixed(2)}\n`;
+            csvContent += `"${student.studentName}",${student.studentNumber},${student.totalTrips},${(student.totalCost || 0).toFixed(2)},${(student.totalDistance || 0).toFixed(2)}\n`;
           });
           filename = 'date-range-report.csv';
           break;
@@ -516,8 +516,8 @@ const TripReports = () => {
                           <TableCell className="font-medium">{student.studentName}</TableCell>
                           <TableCell>{student.studentNumber}</TableCell>
                           <TableCell>{student.totalTrips}</TableCell>
-                          <TableCell>R{student.totalCost.toFixed(2)}</TableCell>
-                          <TableCell>{student.totalDistance.toFixed(2)}</TableCell>
+                          <TableCell>R{(student.totalCost || 0).toFixed(2)}</TableCell>
+                          <TableCell>{(student.totalDistance || 0).toFixed(2)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
