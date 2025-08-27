@@ -30,6 +30,9 @@ interface DateRangeReport {
   studentName: string;
   studentNumber: number;
   dates: { [date: string]: { totalTrips: number; totalBilling: number } };
+  totalTrips: number;
+  totalCost: number;
+  paidTrips: number;
 }
 
 const TripReports = () => {
@@ -199,7 +202,6 @@ const TripReports = () => {
         stats.type = freeBookings > paidBookings ? 'free' : 'paid';
         
         // Calculate occupancy (assuming 15 seat capacity)
-        //stats.avgOccupancy = `${Math.round((validBookings.length / 15) * 100)}%`;
         stats.avgOccupancy =`${validBookings.length}/15`;
       });
 
@@ -212,16 +214,19 @@ const TripReports = () => {
   const fetchDateRangeReports = async () => {
     try {
       let query = supabase
-        .from('bookings')
-        .select(`
-          date,
-          cost,
-          cancelled,
-          users:user_id (
-            name,
-            student_number
-          )
-        `);
+  .from('bookings')
+  .select(`
+    date,
+    cost,
+    cancelled,
+    payment_method,
+    users:user_id (
+      name,
+      student_number
+    )
+  `)
+  .eq('cancelled', false); // Only include non-cancelled bookings
+
 
       if (dateFrom) {
         query = query.gte('date', dateFrom);
@@ -238,28 +243,43 @@ const TripReports = () => {
       const studentDateMap: Record<string, DateRangeReport> = {};
 
       (bookings || []).forEach(booking => {
-        if (!booking.cancelled && booking.users) {
+        if (booking.users) {
           const user = booking.users as any;
           const studentKey = `${user.name}-${user.student_number || 0}`;
           
           if (!studentDateMap[studentKey]) {
             studentDateMap[studentKey] = {
               studentName: user.name || 'Unknown',
-              studentNumber: user.student_number || 0,
-              dates: {}
+              studentNumber: user.student_number||0 , // Not available in your schema
+              dates: {},
+              totalTrips: 0,
+              totalCost: 0,
+              paidTrips: 0
             };
           }
 
+          const student = studentDateMap[studentKey];
           const date = booking.date;
-          if (!studentDateMap[studentKey].dates[date]) {
-            studentDateMap[studentKey].dates[date] = {
+          
+          if (!student.dates[date]) {
+            student.dates[date] = {
               totalTrips: 0,
               totalBilling: 0
             };
           }
 
-          studentDateMap[studentKey].dates[date].totalTrips += 1;
-          studentDateMap[studentKey].dates[date].totalBilling += booking.cost || 0;
+          // Update date-specific totals
+          student.dates[date].totalTrips += 1;
+          student.dates[date].totalBilling += booking.cost || 0;
+          
+          // Update overall student totals
+          student.totalTrips += 1;
+          student.totalCost += booking.cost || 0;
+          
+          // Count paid trips
+          if (booking.payment_method !== 'free') {
+            student.paidTrips += 1;
+          }
         }
       });
 
@@ -296,7 +316,7 @@ const TripReports = () => {
           break;
           
         case 'dateRange':
-          csvContent = 'Student Name,Student Number';
+          csvContent = 'Student Name';
           // Get all unique dates
           const allDates = new Set<string>();
           dateRangeReports.forEach(student => {
@@ -308,16 +328,16 @@ const TripReports = () => {
           sortedDates.forEach(date => {
             csvContent += `,${date} Trips,${date} Billing`;
           });
-          csvContent += '\n';
+          csvContent += ',Total Trips,Total Billing\n';
           
           // Add student rows
           dateRangeReports.forEach(student => {
-            csvContent += `"${student.studentName}",${student.studentNumber}`;
+            csvContent += `"${student.studentName}"`;
             sortedDates.forEach(date => {
               const data = student.dates[date] || { totalTrips: 0, totalBilling: 0 };
               csvContent += `,${data.totalTrips},${data.totalBilling.toFixed(2)}`;
             });
-            csvContent += '\n';
+            csvContent += `,${student.totalTrips},${student.totalCost.toFixed(2)}\n`;
           });
           filename = 'date-range-report.csv';
           break;
@@ -347,38 +367,63 @@ const TripReports = () => {
   };
 
   const exportToExcel = () => {
-    try {
-      let excelContent = 'Summary Report\n';
-      excelContent += `Total Students,${students.length}\n`;
-      excelContent += `Total Revenue,R${studentReports.reduce((sum, student) => sum + student.totalCost, 0)}\n\n`;
-      
-      excelContent += 'Student Name,Trips Taken,Total Cost (ZAR)\n';
-      studentReports.forEach(student => {
-        excelContent += `"${student.studentName}",${student.totalTrips},${student.totalCost}\n`;
+  try {
+    let excelContent = 'Date Range Report\n';
+    excelContent += `Total Students,${dateRangeReports.length}\n`;
+    excelContent += `Total Revenue,R${dateRangeReports.reduce((sum, student) => sum + student.totalCost, 0)}\n\n`;
+
+    // Collect all unique dates (same as the table)
+    const allDates = new Set<string>();
+    dateRangeReports.forEach(student => {
+      Object.keys(student.dates).forEach(date => allDates.add(date));
+    });
+    const sortedDates = Array.from(allDates).sort();
+
+    // Header row
+    let headerRow = 'Student Number,Student Name';
+    sortedDates.forEach(date => {
+      headerRow += `,${date} Trips,${date} Billing (ZAR)`;
+    });
+    headerRow += ',Total Trips,Total Billing\n';
+    excelContent += headerRow;
+
+    // Data rows
+    dateRangeReports.forEach(student => {
+      let row = `"${student.studentNumber}","${student.studentName}"`;
+
+      sortedDates.forEach(date => {
+        const data = student.dates[date] || { totalTrips: 0, totalBilling: 0 };
+        row += `,${data.totalTrips || ""},${data.totalBilling ? "R" + data.totalBilling.toFixed(2) : ""}`;
       });
 
-      const blob = new Blob([excelContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', 'manager-trip-report.csv');
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      row += `,${student.totalTrips},R${student.totalCost.toFixed(2)}\n`;
+      excelContent += row;
+    });
 
-      toast({
-        title: "Excel export successful",
-        description: "Manager report exported with summary data",
-      });
-    } catch (error) {
-      toast({
-        title: "Excel export failed",
-        description: "There was an error exporting the Excel report",
-        variant: "destructive",
-      });
-    }
-  };
+    // Create CSV blob + download
+    const blob = new Blob([excelContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'manager-trip-report.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Excel export successful",
+      description: "Manager report exported with full date range data",
+    });
+  } catch (error) {
+    toast({
+      title: "Excel export failed",
+      description: "There was an error exporting the Excel report",
+      variant: "destructive",
+    });
+  }
+};
+
 
   return (
     <div className="space-y-6">
@@ -518,48 +563,72 @@ const TripReports = () => {
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
+                      {/* First header row */}
                       <TableRow>
-                        <TableHead>Student Name</TableHead>
-                        <TableHead>Student Number</TableHead>
+                        <TableHead rowSpan={2}>Student Number</TableHead>
+                        <TableHead rowSpan={2}>Student Name</TableHead>
                         {(() => {
-                          // Get all unique dates across all students
                           const allDates = new Set<string>();
                           dateRangeReports.forEach(student => {
                             Object.keys(student.dates).forEach(date => allDates.add(date));
                           });
                           const sortedDates = Array.from(allDates).sort();
-                          
                           return sortedDates.map(date => (
-                            <React.Fragment key={date}>
-                              <TableHead className="text-center border-l">{date} - Trips</TableHead>
-                              <TableHead className="text-center">{date} - Billing (ZAR)</TableHead>
-                            </React.Fragment>
+                            <TableHead key={date} colSpan={2} className="text-center border-l">
+                              {date}
+                            </TableHead>
                           ));
+                        })()}
+                        <TableHead rowSpan={2} className="text-center border-l">Total Trips</TableHead>
+                        <TableHead rowSpan={2} className="text-center">Total Billing</TableHead>
+                      </TableRow>
+
+                      {/* Second header row */}
+                      <TableRow>
+                        {(() => {
+                          const allDates = new Set<string>();
+                          dateRangeReports.forEach(student => {
+                            Object.keys(student.dates).forEach(date => allDates.add(date));
+                          });
+                          const sortedDates = Array.from(allDates).sort();
+
+                          return sortedDates.flatMap(date => [
+                            <TableHead key={`${date}-trips`} className="text-center border-l">Trips</TableHead>,
+                            <TableHead key={`${date}-billing`} className="text-center">Billing (ZAR)</TableHead>
+                          ]);
                         })()}
                       </TableRow>
                     </TableHeader>
+
                     <TableBody>
                       {dateRangeReports.map((student, index) => {
-                        // Get all unique dates for consistent column structure
+                        // Collect all unique dates again for row alignment
                         const allDates = new Set<string>();
                         dateRangeReports.forEach(s => {
                           Object.keys(s.dates).forEach(date => allDates.add(date));
                         });
                         const sortedDates = Array.from(allDates).sort();
-                        
+
                         return (
                           <TableRow key={index}>
-                            <TableCell className="font-medium">{student.studentName}</TableCell>
                             <TableCell>{student.studentNumber}</TableCell>
+                            <TableCell className="font-medium">{student.studentName}</TableCell>
                             {sortedDates.map(date => {
                               const data = student.dates[date] || { totalTrips: 0, totalBilling: 0 };
                               return (
                                 <React.Fragment key={date}>
-                                  <TableCell className="text-center border-l">{data.totalTrips}</TableCell>
-                                  <TableCell className="text-center">R{data.totalBilling.toFixed(2)}</TableCell>
+                                  <TableCell className="text-center border-l">
+                                    {data.totalTrips > 0 ? data.totalTrips : ""}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    {data.totalBilling > 0 ? `R${data.totalBilling.toFixed(2)}` : ""}
+                                  </TableCell>
                                 </React.Fragment>
                               );
                             })}
+
+                            <TableCell className="text-center border-l">{student.totalTrips}</TableCell>
+                            <TableCell className="text-center">R{student.totalCost.toFixed(2)}</TableCell>
                           </TableRow>
                         );
                       })}
