@@ -27,11 +27,12 @@ interface TimeSlotReport {
 }
 
 interface DateRangeReport {
+  date: string;
   studentName: string;
   studentNumber: number;
   totalTrips: number;
-  totalCost: number;
-  totalDistance: number;
+  revenue: number;
+  avgDistance: number;
 }
 
 const TripReports = () => {
@@ -216,6 +217,7 @@ const TripReports = () => {
       let query = supabase
         .from('bookings')
         .select(`
+          date,
           cost,
           distance_traveled,
           cancelled,
@@ -236,35 +238,27 @@ const TripReports = () => {
 
       if (error) throw error;
 
-      // Aggregate data by student
-      const studentStats: Record<string, DateRangeReport> = {};
+      const reportData: DateRangeReport[] = [];
 
       (bookings || []).forEach(booking => {
         if (!booking.cancelled && booking.users) {
           const user = booking.users as any;
-          const studentKey = `${user.name}-${user.student_number}`;
-          
-          if (!studentStats[studentKey]) {
-            studentStats[studentKey] = {
-              studentName: user.name || 'Unknown',
-              studentNumber: user.student_number || 0,
-              totalTrips: 0,
-              totalCost: 0,
-              totalDistance: 0
-            };
-          }
-
-          const stats = studentStats[studentKey];
-          stats.totalTrips += 1;
-          stats.totalCost += Number(booking.cost) || 0;
-          stats.totalDistance += Number(booking.distance_traveled) || 0;
+          reportData.push({
+            date: booking.date,
+            studentName: user.name || 'Unknown',
+            studentNumber: user.student_number || 0,
+            totalTrips: 1,
+            revenue: booking.cost || 0,
+            avgDistance: booking.distance_traveled || 0
+          });
         }
       });
 
-      // Convert to array and sort by student name
-      const reportData = Object.values(studentStats).sort((a, b) => 
-        a.studentName.localeCompare(b.studentName)
-      );
+      // Sort by date, then by student name
+      reportData.sort((a, b) => {
+        const dateCompare = a.date.localeCompare(b.date);
+        return dateCompare !== 0 ? dateCompare : a.studentName.localeCompare(b.studentName);
+      });
 
       setDateRangeReports(reportData);
     } catch (error) {
@@ -299,9 +293,9 @@ const TripReports = () => {
           break;
           
         case 'dateRange':
-          csvContent = 'Student Name,Student Number,Total Trips,Total Cost (ZAR),Total Distance (km)\n';
-          dateRangeReports.forEach(student => {
-            csvContent += `"${student.studentName}",${student.studentNumber},${student.totalTrips},${(student.totalCost || 0).toFixed(2)},${(student.totalDistance || 0).toFixed(2)}\n`;
+          csvContent = 'Date,Student Name,Student Number,Total Trips,Revenue (ZAR),Distance (km)\n';
+          dateRangeReports.forEach(day => {
+            csvContent += `${day.date},"${day.studentName}",${day.studentNumber},${day.totalTrips},${day.revenue},${day.avgDistance.toFixed(2)}\n`;
           });
           filename = 'date-range-report.csv';
           break;
@@ -503,21 +497,21 @@ const TripReports = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Date</TableHead>
                         <TableHead>Student Name</TableHead>
                         <TableHead>Student Number</TableHead>
-                        <TableHead>Total Trips</TableHead>
-                        <TableHead>Total Cost (ZAR)</TableHead>
-                        <TableHead>Total Distance (km)</TableHead>
+                        <TableHead>Revenue (ZAR)</TableHead>
+                        <TableHead>Distance (km)</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {dateRangeReports.map((student, index) => (
+                      {dateRangeReports.map((day, index) => (
                         <TableRow key={index}>
-                          <TableCell className="font-medium">{student.studentName}</TableCell>
-                          <TableCell>{student.studentNumber}</TableCell>
-                          <TableCell>{student.totalTrips}</TableCell>
-                          <TableCell>R{(student.totalCost || 0).toFixed(2)}</TableCell>
-                          <TableCell>{(student.totalDistance || 0).toFixed(2)}</TableCell>
+                          <TableCell className="font-medium">{day.date}</TableCell>
+                          <TableCell>{day.studentName}</TableCell>
+                          <TableCell>{day.studentNumber}</TableCell>
+                          <TableCell>R{day.revenue.toFixed(2)}</TableCell>
+                          <TableCell>{day.avgDistance.toFixed(2)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
