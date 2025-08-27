@@ -107,3 +107,6 @@ All colors MUST be HSL.
     display: none !important;
   }
 }
+#lovable-badge {
+  display: none !important;
+}
