@@ -45,18 +45,35 @@ const DriverDashboard = () => {
 
       if (error) throw error;
 
-      // Transform the data to match the expected format
-      const transformedTrips = trips.map(trip => ({
-        ...trip,
-        bookings: trip.bookings?.map((booking: any) => ({
+      // Group trips by time slot and combine bookings
+      const groupedTrips = trips.reduce((acc: any, trip) => {
+        const timeSlotId = trip.time_slot?.id;
+        const timeSlotKey = timeSlotId || 'no-time-slot';
+        
+        if (!acc[timeSlotKey]) {
+          acc[timeSlotKey] = {
+            ...trip,
+            time_slot: trip.time_slot,
+            bookings: []
+          };
+        }
+        
+        // Add bookings from this trip to the combined trip
+        const transformedBookings = trip.bookings?.map((booking: any) => ({
           ...booking,
           pickup: booking.pickup_stop?.name || 'Unknown pickup',
           destination: booking.dropoff_stop?.name || 'Unknown destination',
           pickedUp: booking.picked_up
-        })) || []
-      }));
+        })) || [];
+        
+        acc[timeSlotKey].bookings.push(...transformedBookings);
+        
+        return acc;
+      }, {});
 
-      setSelectedTrips(transformedTrips);
+      // Convert back to array
+      const combinedTrips = Object.values(groupedTrips);
+      setSelectedTrips(combinedTrips);
     } catch (error) {
       console.error('Error fetching trips:', error);
       toast({
@@ -164,8 +181,8 @@ const DriverDashboard = () => {
               </CardContent>
             </Card>
           ) : (
-            selectedTrips.map((trip) => (
-              <Card key={trip.id}>
+            selectedTrips.map((trip, index) => (
+              <Card key={trip.time_slot?.id || `trip-${index}`}>
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span className="flex items-center">
@@ -178,7 +195,7 @@ const DriverDashboard = () => {
                     </Badge>
                   </CardTitle>
                   <CardDescription>
-                    Date: {trip.date} | Route: {trip.route?.join(' → ') || 'Route not specified'}
+                    Date: {trip.date} | Combined trip for this time slot
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
