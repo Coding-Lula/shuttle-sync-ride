@@ -68,21 +68,43 @@ export function useStudents() {
     try {
       console.log('Creating student with data:', studentData);
       
-      const { data, error } = await supabase.rpc('create_user_account', {
-        p_email: studentData.email,
-        p_password: studentData.password,
-        p_name: studentData.name,
-        p_role: 'student',
-        p_student_type: studentData.student_type
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          email: studentData.email,
+          password: studentData.password,
+          metadata: {
+            name: studentData.name,
+            role: 'student',
+            student_type: studentData.student_type
+          }
+        }
       });
 
       if (error) throw error;
 
-      const result = data as { success: boolean; error?: string; message: string };
-      
-      if (!result.success) {
-        throw new Error(result.error || result.message);
-      }
+      // Insert into users table
+      const userId = data.user.id;
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert({
+          id: userId,
+          email: studentData.email,
+          name: studentData.name,
+          role: 'student',
+          student_type: studentData.student_type
+        });
+
+      if (insertError) throw insertError;
+
+      // Create initial credits record
+      const { error: creditsError } = await supabase
+        .from('credits')
+        .insert({
+          user_id: userId,
+          balance: 0.00
+        });
+
+      if (creditsError) throw creditsError;
 
       toast({
         title: "Success",
