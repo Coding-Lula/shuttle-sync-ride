@@ -314,6 +314,27 @@ export type Database = {
         }
         Relationships: []
       }
+      student_types: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          type_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          type_name: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          type_name?: string
+        }
+        Relationships: []
+      }
       time_slots: {
         Row: {
           created_at: string | null
@@ -435,6 +456,7 @@ export type Database = {
           name: string
           role: string
           start_location: string | null
+          student_number: number | null
           student_type: string | null
         }
         Insert: {
@@ -444,6 +466,7 @@ export type Database = {
           name: string
           role: string
           start_location?: string | null
+          student_number?: number | null
           student_type?: string | null
         }
         Update: {
@@ -453,6 +476,7 @@ export type Database = {
           name?: string
           role?: string
           start_location?: string | null
+          student_number?: number | null
           student_type?: string | null
         }
         Relationships: []
@@ -493,6 +517,7 @@ export type Database = {
       }
     }
     Functions: {
+      add_student_type: { Args: { p_type_name: string }; Returns: Json }
       create_user_account: {
         Args: {
           p_email: string
@@ -504,10 +529,7 @@ export type Database = {
         }
         Returns: Json
       }
-      get_current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_current_user_role: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
