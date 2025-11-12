@@ -4,27 +4,41 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus, Users, Loader2 } from 'lucide-react';
+import { UserPlus, Users, Loader2, Plus } from 'lucide-react';
 import { useStudents } from '@/hooks/useStudents';
 
 export default function StudentManagement() {
-  const { students, isLoading, addStudent, updateStudentType } = useStudents();
+  const { students, studentTypes, isLoading, addStudent, addStudentType, updateStudentType } = useStudents();
   const [showAddStudent, setShowAddStudent] = useState(false);
+  const [showAddType, setShowAddType] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newTypeName, setNewTypeName] = useState('');
   const [newStudent, setNewStudent] = useState({
     name: '',
     email: '',
-    student_type: 'community' as 'community' | 'yoyl',
+    student_type: '',
     password: ''
   });
 
   const handleAddStudent = async () => {
-    if (newStudent.name && newStudent.email && newStudent.password) {
+    if (newStudent.name && newStudent.email && newStudent.password && newStudent.student_type) {
       setIsSubmitting(true);
       const success = await addStudent(newStudent);
       if (success) {
-        setNewStudent({ name: '', email: '', student_type: 'community', password: '' });
+        setNewStudent({ name: '', email: '', student_type: '', password: '' });
         setShowAddStudent(false);
+      }
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAddStudentType = async () => {
+    if (newTypeName.trim()) {
+      setIsSubmitting(true);
+      const success = await addStudentType(newTypeName.trim());
+      if (success) {
+        setNewTypeName('');
+        setShowAddType(false);
       }
       setIsSubmitting(false);
     }
@@ -54,15 +68,45 @@ export default function StudentManagement() {
             </CardTitle>
             <CardDescription>Add, remove, and manage student accounts</CardDescription>
           </div>
-          <Button onClick={() => setShowAddStudent(!showAddStudent)}>
-            <UserPlus className="w-4 h-4 mr-2" />
-            Add Student
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowAddType(!showAddType)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Type
+            </Button>
+            <Button onClick={() => setShowAddStudent(!showAddStudent)}>
+              <UserPlus className="w-4 h-4 mr-2" />
+              Add Student
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
+        {showAddType && (
+          <div className="mb-6 p-4 border rounded-lg bg-muted">
+            <h4 className="font-medium mb-3">Add New Student Type</h4>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Type name (e.g., honors, sports)"
+                value={newTypeName}
+                onChange={(e) => setNewTypeName(e.target.value)}
+              />
+              <Button onClick={handleAddStudentType} disabled={isSubmitting || !newTypeName.trim()}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  'Add Type'
+                )}
+              </Button>
+              <Button variant="outline" onClick={() => setShowAddType(false)}>Cancel</Button>
+            </div>
+          </div>
+        )}
+
         {showAddStudent && (
-          <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+          <div className="mb-6 p-4 border rounded-lg bg-muted">
             <h4 className="font-medium mb-3">Add New Student</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
@@ -82,13 +126,16 @@ export default function StudentManagement() {
                 value={newStudent.password}
                 onChange={(e) => setNewStudent({...newStudent, password: e.target.value})}
               />
-              <Select value={newStudent.student_type} onValueChange={(value: 'community' | 'yoyl') => setNewStudent({...newStudent, student_type: value})}>
+              <Select value={newStudent.student_type} onValueChange={(value) => setNewStudent({...newStudent, student_type: value})}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select student type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="community">Community</SelectItem>
-                  <SelectItem value="yoyl">YOYL</SelectItem>
+                  {studentTypes.map((type) => (
+                    <SelectItem key={type.id} value={type.type_name}>
+                      {type.type_name.charAt(0).toUpperCase() + type.type_name.slice(1)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -127,15 +174,18 @@ export default function StudentManagement() {
                 </div>
                 <div className="flex items-center space-x-4">
                   <Select
-                    value={student.student_type || 'community'}
+                    value={student.student_type || ''}
                     onValueChange={(value) => updateStudentType(student.id, value)}
                   >
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger className="w-40">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="community">Community</SelectItem>
-                      <SelectItem value="yoyl">YOYL</SelectItem>
+                      {studentTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.type_name}>
+                          {type.type_name.charAt(0).toUpperCase() + type.type_name.slice(1)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

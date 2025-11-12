@@ -7,14 +7,40 @@ export interface Student {
   id: string;
   name: string;
   email: string;
-  student_type: 'community' | 'yoyl';
+  student_type: string;
+  created_at?: string;
+}
+
+export interface StudentType {
+  id: string;
+  type_name: string;
   created_at?: string;
 }
 
 export function useStudents() {
   const [students, setStudents] = useState<Student[]>([]);
+  const [studentTypes, setStudentTypes] = useState<StudentType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+
+  const fetchStudentTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('student_types')
+        .select('*')
+        .order('type_name', { ascending: true });
+
+      if (error) throw error;
+      setStudentTypes(data || []);
+    } catch (error) {
+      console.error('Error fetching student types:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch student types",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchStudents = async () => {
     try {
@@ -76,6 +102,38 @@ export function useStudents() {
     }
   };
 
+  const addStudentType = async (typeName: string) => {
+    try {
+      const { data, error } = await supabase.rpc('add_student_type', {
+        p_type_name: typeName
+      });
+
+      if (error) throw error;
+
+      const result = data as { success: boolean; error?: string; message: string };
+      
+      if (!result.success) {
+        throw new Error(result.error || result.message);
+      }
+
+      toast({
+        title: "Success",
+        description: `Student type "${typeName}" has been added successfully.`,
+      });
+
+      await fetchStudentTypes();
+      return true;
+    } catch (error: any) {
+      console.error('Error adding student type:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add student type",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
   const updateStudentType = async (studentId: string, newType: string) => {
     try {
       const { error } = await supabase
@@ -103,12 +161,15 @@ export function useStudents() {
 
   useEffect(() => {
     fetchStudents();
+    fetchStudentTypes();
   }, []);
 
   return {
     students,
+    studentTypes,
     isLoading,
     addStudent,
+    addStudentType,
     updateStudentType,
     refetch: fetchStudents
   };
