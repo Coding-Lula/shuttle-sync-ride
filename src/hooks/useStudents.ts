@@ -73,7 +73,7 @@ export function useStudents() {
           email: studentData.email,
           password: studentData.password,
           metadata: {
-            name: studentData.name,
+            full_name: studentData.name,
             role: 'student',
             student_type: studentData.student_type
           }
@@ -81,30 +81,6 @@ export function useStudents() {
       });
 
       if (error) throw error;
-
-      // Insert into users table
-      const userId = data.user.id;
-      const { error: insertError } = await supabase
-        .from('users')
-        .insert({
-          id: userId,
-          email: studentData.email,
-          name: studentData.name,
-          role: 'student',
-          student_type: studentData.student_type
-        });
-
-      if (insertError) throw insertError;
-
-      // Create initial credits record
-      const { error: creditsError } = await supabase
-        .from('credits')
-        .insert({
-          user_id: userId,
-          balance: 0.00
-        });
-
-      if (creditsError) throw creditsError;
 
       toast({
         title: "Success",

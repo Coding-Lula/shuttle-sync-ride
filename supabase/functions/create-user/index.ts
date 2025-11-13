@@ -22,18 +22,48 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    // Create auth user
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email,
       password: password,
-      email_confirm: true, // Automatically confirm user email
-      user_metadata: metadata, // This stores full_name, role, etc.
+      email_confirm: true,
+      user_metadata: metadata,
     });
 
-    if (error) {
-      throw error;
+    if (authError) {
+      throw authError;
     }
 
-    return new Response(JSON.stringify(data), {
+    // Insert into users table
+    const { error: userError } = await supabaseAdmin
+      .from('users')
+      .insert({
+        id: authData.user.id,
+        email: email,
+        name: metadata.full_name,
+        role: metadata.role,
+        student_type: metadata.student_type,
+      });
+
+    if (userError) {
+      throw userError;
+    }
+
+    // Create initial credits record for students
+    if (metadata.role === 'student') {
+      const { error: creditsError } = await supabaseAdmin
+        .from('credits')
+        .insert({
+          user_id: authData.user.id,
+          balance: 0.00,
+        });
+
+      if (creditsError) {
+        throw creditsError;
+      }
+    }
+
+    return new Response(JSON.stringify(authData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
