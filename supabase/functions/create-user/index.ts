@@ -15,6 +15,7 @@ serve(async (req) => {
 
   try {
     const { email, password, metadata } = await req.json();
+    console.log('Creating user with email:', email, 'role:', metadata.role);
 
     // Create a new Supabase client with the Service Role Key
     const supabaseAdmin = createClient(
@@ -23,6 +24,7 @@ serve(async (req) => {
     );
 
     // Create auth user
+    console.log('Creating auth user...');
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email,
       password: password,
@@ -31,11 +33,15 @@ serve(async (req) => {
     });
 
     if (authError) {
+      console.error('Auth error:', authError);
       throw authError;
     }
 
+    console.log('Auth user created with ID:', authData.user.id);
+
     // Insert into users table
-    const { error: userError } = await supabaseAdmin
+    console.log('Inserting into users table...');
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .insert({
         id: authData.user.id,
@@ -43,24 +49,33 @@ serve(async (req) => {
         name: metadata.full_name,
         role: metadata.role,
         student_type: metadata.student_type,
-      });
+      })
+      .select();
 
     if (userError) {
+      console.error('User table insert error:', userError);
       throw userError;
     }
 
+    console.log('User inserted into users table:', userData);
+
     // Create initial credits record for students
     if (metadata.role === 'student') {
-      const { error: creditsError } = await supabaseAdmin
+      console.log('Creating credits record for student...');
+      const { data: creditsData, error: creditsError } = await supabaseAdmin
         .from('credits')
         .insert({
           user_id: authData.user.id,
           balance: 0.00,
-        });
+        })
+        .select();
 
       if (creditsError) {
+        console.error('Credits insert error:', creditsError);
         throw creditsError;
       }
+      
+      console.log('Credits record created:', creditsData);
     }
 
     return new Response(JSON.stringify(authData), {
@@ -68,6 +83,7 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
+    console.error('Error in create-user function:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
