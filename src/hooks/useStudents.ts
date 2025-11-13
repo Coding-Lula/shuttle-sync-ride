@@ -68,6 +68,22 @@ export function useStudents() {
     try {
       console.log('Creating student with data:', studentData);
       
+      // Check if student with this email already exists
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('email')
+        .eq('email', studentData.email)
+        .single();
+
+      if (existingUser) {
+        toast({
+          title: "Error",
+          description: "A user with this email address already exists.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
       const { data, error } = await supabase.functions.invoke('create-user', {
         body: {
           email: studentData.email,
@@ -80,7 +96,17 @@ export function useStudents() {
         }
       });
 
-      if (error) throw error;
+      // Handle edge function errors
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to create student');
+      }
+
+      // Check if the response contains an error
+      if (data && data.error) {
+        console.error('Response error:', data.error);
+        throw new Error(data.error);
+      }
 
       toast({
         title: "Success",
@@ -91,9 +117,20 @@ export function useStudents() {
       return true;
     } catch (error: any) {
       console.error('Error adding student:', error);
+      
+      // Extract meaningful error message
+      let errorMessage = "Failed to add student";
+      if (error.message) {
+        if (error.message.includes('already been registered')) {
+          errorMessage = "A user with this email address already exists.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to add student",
+        description: errorMessage,
         variant: "destructive",
       });
       return false;
